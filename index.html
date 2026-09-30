@@ -653,8 +653,8 @@
                         <input type="tel" id="customer-phone" placeholder="手机号码" class="w-full p-2 border rounded" required>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-email">电子邮箱（必填，用于回传确认）</label>
-                        <input type="email" id="customer-email" placeholder="name@example.com" class="w-full p-2 border rounded" required>
+                        <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-email">电子邮箱（选填）</label>
+                        <input type="email" id="customer-email" placeholder="name@example.com（选填）" class="w-full p-2 border rounded">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-address">收货地址（必填）</label>
@@ -675,10 +675,6 @@
                     <input type="hidden" id="recipient-phone" value="">
                     <input type="hidden" id="recipient-address" value="">
 
-                    <div class="flex items-start gap-2 pt-2">
-                        <input type="checkbox" id="email-customer-copy" class="mt-1" checked>
-                        <label for="email-customer-copy" class="text-sm text-gray-600">同时向本人邮箱发送订购确认文件（待双方确认）</label>
-                    </div>
 
                     <!-- 选择荧光染料模块（保留，默认隐藏） -->
                     <div id="dye-selection-module" class="border-t pt-4 mt-4 hidden">
@@ -743,7 +739,7 @@
             <div class="flex-grow overflow-y-auto p-6 md:p-8">
                 <div id="submit-success-banner" class="success-banner hidden no-print">
                     <h3>订单已提交</h3>
-                    <p id="submit-success-detail">已生成订购确认合同（PDF）与配货单，可下载；同时已发至览微邮箱。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。</p>
+                    <p id="submit-success-detail">已生成订购确认合同与配货单，可下载；文件已发至销售邮箱 sales@vivebio.cn（订单部线下确认后转发仓配）。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。</p>
                 </div>
                 <div id="submit-fail-banner" class="hidden no-print mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800">
                     <h3 class="font-bold text-lg">提交未成功</h3>
@@ -790,8 +786,9 @@
 
 
     <script>
-        // 邮件网关：后续可填入 Cloudflare Worker / Apps Script / Formspree 等 URL
-        // POST JSON: { to_sales, to_customer, subject_sales, subject_customer, body_sales, body_customer, order, contract_html, packing_html }
+        // 邮件网关：Cloudflare Worker URL（见仓库 email-worker/）。空字符串=仅本地生成+mailto 摘要。
+        // POST JSON → sales@vivebio.cn only: { to, subject, body, order, contract_html, packing_html, contract_pdf?, packing_pdf? }
+        // 业务：订购确认+配货单仅发销售部；不下发客户邮箱。
         window.LANWEI_ORDER_EMAIL_ENDPOINT = '';
 
         // 览微生物公章（来自 seal.png → seal.b64.txt）
@@ -1583,8 +1580,8 @@
             }
             const email = (document.getElementById('customer-email').value || '').trim();
             const phone = (document.getElementById('customer-phone').value || '').trim();
-            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                showToast('请填写有效的电子邮箱');
+            if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                showToast('电子邮箱格式不正确');
                 document.getElementById('customer-email').focus();
                 return;
             }
@@ -1593,7 +1590,6 @@
                 return;
             }
 
-            const sendCustomerCopy = document.getElementById('email-customer-copy').checked;
             currentCustomerInfo = {
                 name: document.getElementById('customer-name').value.trim(),
                 agent: document.getElementById('customer-agent').value.trim(),
@@ -1607,8 +1603,7 @@
                 recipientName: document.getElementById('customer-agent').value.trim(),
                 recipientPhone: phone,
                 recipientAddress: document.getElementById('customer-address').value.trim(),
-                selectedDyes: [...selectedDyes],
-                sendCustomerCopy: sendCustomerCopy
+                selectedDyes: [...selectedDyes]
             };
 
             saveCustomerHistory(currentCustomerInfo);
@@ -1625,7 +1620,6 @@
 
             const emailResult = await submitOrderEmails({
                 salesTo: 'sales@vivebio.cn',
-                customerEmail: sendCustomerCopy ? email : '',
                 order: currentCustomerInfo,
                 contractHtml: contractPrintableArea.innerHTML,
                 packingHtml: currentPackingHtml
@@ -1691,47 +1685,75 @@
             return lines.join('\n');
         }
 
-        async function submitOrderEmails({ salesTo, customerEmail, order, contractHtml, packingHtml }) {
+        function utf8ToBase64(str) {
+            const bytes = new TextEncoder().encode(str || '');
+            let binary = '';
+            const chunk = 0x8000;
+            for (let i = 0; i < bytes.length; i += chunk) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+            }
+            return btoa(binary);
+        }
+
+        function wrapDocHtml(title, bodyHtml) {
+            return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${title}</title>
+<style>body{font-family:'Microsoft YaHei',sans-serif;font-size:12pt;color:#111;margin:24px;} table{border-collapse:collapse;width:100%;} td,th{border:1px solid #ccc;padding:6px;} img.seal-overlay{max-width:140px;}</style>
+</head><body>${bodyHtml || ''}</body></html>`;
+        }
+
+        async function submitOrderEmails({ salesTo, order, contractHtml, packingHtml }) {
             const d = formatOrderDateParts();
-            const subjectSales = `【览微在线下单】${order.name} · ${d.dateIso}`;
-            const subjectCustomer = '【览微】订购确认文件（待双方确认）';
-            const bodySales = buildOrderSummaryText(order);
-            const bodyCustomer = '附件为根据您提交信息生成的订购确认合同与配货明细，供核对；成交与发货以双方确认后的订单为准。产品仅供科研使用（RUO）。';
+            const to = salesTo || 'sales@vivebio.cn';
+            const subject = `【览微在线下单】${order.name} · ${d.dateIso}`;
+            const body = buildOrderSummaryText(order);
             const endpoint = (window.LANWEI_ORDER_EMAIL_ENDPOINT || '').trim();
+
+            const contractDoc = wrapDocHtml(`订购确认_${order.name}_${d.dateIso}`, contractHtml);
+            const packingDoc = wrapDocHtml(`配货单_${order.name}_${d.dateIso}`, packingHtml);
+            const contractB64 = utf8ToBase64(contractDoc);
+            const packingB64 = utf8ToBase64(packingDoc);
+
+            const payload = {
+                to: to,
+                subject: subject,
+                body: body,
+                order: {
+                    ...order,
+                    items: cart.map(i => ({
+                        catalog: i.catalog,
+                        subCode: i.subCode || '',
+                        name: i.name,
+                        spec: i.spec,
+                        quantity: i.quantity,
+                        price: i.price,
+                        components: i.components || [],
+                        selectedDyes: i.selectedDyes || []
+                    }))
+                },
+                contract_html: contractDoc,
+                packing_html: packingDoc,
+                // HTML 文档作附件（base64）；浏览器端暂无可靠 PDF 库时用 HTML
+                contract_pdf: contractB64,
+                packing_pdf: packingB64,
+                contract_filename: `订购确认_${order.name}_${d.dateShort}.html`,
+                packing_filename: `配货单_${order.name}_${d.dateShort}.html`,
+                attachment_content_type: 'text/html; charset=utf-8'
+            };
 
             if (endpoint) {
                 try {
                     const resp = await fetch(endpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            to_sales: salesTo,
-                            to_customer: customerEmail || '',
-                            subject_sales: subjectSales,
-                            subject_customer: subjectCustomer,
-                            body_sales: bodySales,
-                            body_customer: bodyCustomer,
-                            order: {
-                                ...order,
-                                items: cart.map(i => ({
-                                    catalog: i.catalog,
-                                    subCode: i.subCode || '',
-                                    name: i.name,
-                                    spec: i.spec,
-                                    quantity: i.quantity,
-                                    price: i.price,
-                                    components: i.components || [],
-                                    selectedDyes: i.selectedDyes || []
-                                }))
-                            },
-                            contract_html: contractHtml,
-                            packing_html: packingHtml
-                        })
+                        body: JSON.stringify(payload)
                     });
                     if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    let data = null;
+                    try { data = await resp.json(); } catch (_) {}
+                    if (data && data.ok === false) throw new Error(data.error || 'gateway rejected');
                     return {
                         ok: true,
-                        message: '已生成订购确认合同（PDF）与配货单，可下载；同时已发至览微邮箱。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。'
+                        message: '已生成订购确认合同与配货单，可下载；文件已发至销售邮箱 sales@vivebio.cn（订单部线下与客户确认付款后转发仓配）。不下发客户邮箱。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。'
                     };
                 } catch (err) {
                     console.error('email endpoint failed', err);
@@ -1743,7 +1765,7 @@
             try {
                 exportOrderInfo();
             } catch (e) { console.warn(e); }
-            const mailto = `mailto:${encodeURIComponent(salesTo)}?subject=${encodeURIComponent(subjectSales)}&body=${encodeURIComponent(bodySales)}`;
+            const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             try {
                 const a = document.createElement('a');
                 a.href = mailto;
@@ -1756,7 +1778,7 @@
             return {
                 ok: false,
                 localOnly: true,
-                message: '已生成订购确认合同与配货单，可下载/打印。<br>邮件网关未配置时仅本地生成文件；请联系管理员配置 LANWEI_ORDER_EMAIL_ENDPOINT。<br>已尝试打开邮件客户端发送摘要至 sales@vivebio.cn（不含附件）。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。'
+                message: '已生成订购确认合同与配货单，可下载/打印。<br>邮件网关未配置时仅本地生成文件；请联系管理员部署 email-worker 并设置 LANWEI_ORDER_EMAIL_ENDPOINT。<br>已尝试打开邮件客户端发送摘要至 sales@vivebio.cn（不含附件）。附件目标收件人仅为销售邮箱，不下发客户。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。'
             };
         }
 

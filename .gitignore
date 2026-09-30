@@ -1,2 +1,4 @@
 seal.b64.txt
 .DS_Store
+email-worker/node_modules/
+email-worker/.wrangler/
