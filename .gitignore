@@ -2,3 +2,8 @@ seal.b64.txt
 .DS_Store
 email-worker/node_modules/
 email-worker/.wrangler/
+email-api/node_modules/
+email-api/.env
+email-api/.env.*
+!email-api/.env.example
+*.log

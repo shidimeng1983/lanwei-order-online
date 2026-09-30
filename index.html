@@ -1161,7 +1161,7 @@
 
 
     <script>
-        // 邮件网关：Cloudflare Worker URL（见仓库 email-worker/）。空字符串=仅本地生成文件，绝不打开 mailto。
+        // 邮件网关：email-api（Aliyun SMTP / nodemailer）公网 HTTPS。空字符串=仅本地生成文件，绝不打开 mailto。
         // POST JSON → sales@vivebio.cn only: { to, subject, body, order, contract_html, packing_html, contract_pdf?, packing_pdf? }
         // 业务：订购确认+配货单仅发销售部；不下发客户邮箱。
         window.LANWEI_ORDER_EMAIL_ENDPOINT = '';

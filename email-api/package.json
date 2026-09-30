@@ -1,0 +1,19 @@
+{
+  "name": "lanwei-order-email-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HTTPS email gateway: Lanwei order page → Aliyun enterprise SMTP → sales@vivebio.cn",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test-send": "node scripts/test-send.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16"
+  }
+}

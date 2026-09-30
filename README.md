@@ -33,29 +33,34 @@
 在 `index.html` 脚本顶部：
 
 ```js
-window.LANWEI_ORDER_EMAIL_ENDPOINT = ''; // 填入 Cloudflare Worker URL，见 email-worker/
+window.LANWEI_ORDER_EMAIL_ENDPOINT = ''; // 填入 email-api 公网 HTTPS，见 email-api/
 ```
 
 - **已配置**：提交时 `POST` JSON 至该 URL，字段包括：
-  - `to`（客户端传 `sales@vivebio.cn`；Worker 强制只发销售）
+  - `to`（客户端传 `sales@vivebio.cn`；网关强制只发销售）
   - `subject` / `body`（订单摘要）
   - `order`（单位与明细）
   - `contract_html` / `packing_html`（完整 HTML）
   - `contract_pdf` / `packing_pdf`（当前为 HTML 的 base64；命名保留兼容，便于日后换真 PDF）
-- **未配置**：仍生成本地合同与配货单（供后续邮件 Worker 使用）；**不会**打开 mailto / 系统邮件客户端，也**不会**自动下载配货 CSV。成功页提示「下单完成，将有客服联系您」「请下载/打印订购确认合同留存」，并展示客服微信二维码（`wechat-qr.png`；未上传时显示占位）。
+- **未配置**：仍生成本地合同与配货单；**不会**打开 mailto / 系统邮件客户端，也**不会**自动下载配货 CSV。成功页提示「下单完成，将有客服联系您」「请下载/打印订购确认合同留存」，并展示客服微信二维码（`wechat-qr.png`；未上传时显示占位）。
 
-实现：仓库内 `email-worker/`（Cloudflare Worker + Resend）。收件地址固定 **`sales@vivebio.cn`**，不下发客户。网关成功时，成功页可附一句「订购确认与配货单已发至订单邮箱」（ops 提示）；客户主文案仍为下载合同留存。
+实现：**`email-api/`**（Node + Express + **nodemailer** + 阿里云企业邮 SMTP）。Cloudflare Workers 无法建 SMTP 套接字，故不用 Worker 直连 SMTP。收件固定 **`sales@vivebio.cn`**，From **`orders@vivebio.cn`**。网关成功时成功页可附「订购确认与配货单已发至订单邮箱」。
 
-### 部署邮件网关（需 Shi 提供凭证）
+旧版 `email-worker/`（Resend）保留作参考，当前主路径为 `email-api/`。
 
-环境中未发现现成 Resend / SendGrid / Formspree API Key。上线发信前请：
+### 部署邮件网关（Aliyun SMTP）
 
-1. 在 [Resend](https://resend.com) 注册，验证 **`vivebio.cn`**（或子域），准备发件地址（如 `orders@vivebio.cn`）。
-2. 创建 API Key（`re_...`）。
-3. 按 `email-worker/README.md`：`wrangler login` → `wrangler secret put RESEND_API_KEY` → `npm run deploy`。
-4. 将 Worker URL 写入 `index.html` 的 `LANWEI_ORDER_EMAIL_ENDPOINT`，再推送 Pages。
+1. 阿里云企业邮管理后台：为 `orders@vivebio.cn` **允许第三方客户端**，并开启 SMTP；在网页端生成 **第三方客户端安全密码**。
+2. 在运行主机设置环境变量（勿提交仓库）：
+   - `ALIYUN_MAIL_SMTP_PASS` = 第三方客户端密码
+   - `SMTP_USER=orders@vivebio.cn`（默认）
+   - `FROM_EMAIL=订单通知 <orders@vivebio.cn>`
+   - `SALES_TO=sales@vivebio.cn`
+3. `cd email-api && npm install && npm run test-send`（应成功发到 sales@）→ `npm start`（默认 `:8787`）。
+4. 用 **Railway / Fly / Render / 具名 cloudflared tunnel / VPS** 暴露公网 HTTPS（quick tunnel URL 会变，勿用于生产）。
+5. 将 HTTPS 根地址写入 `index.html` 的 `LANWEI_ORDER_EMAIL_ENDPOINT`，推送 Pages。
 
-销售邮件主题示例：`【览微在线下单】{单位名称} · {日期}`
+SMTP：`smtp.qiye.aliyun.com:465` SSL。销售邮件主题示例：`【览微在线下单】{单位名称} · {日期}`
 
 ## 管理员功能
 
@@ -70,7 +75,7 @@ window.LANWEI_ORDER_EMAIL_ENDPOINT = ''; // 填入 Cloudflare Worker URL，见 e
 1. 将本目录推送到仓库根目录（`shidimeng1983/lanwei-order-online`）。
 2. 仓库 Settings → Pages → Source 选 `main` / root。
 3. 自定义域：`order.vivebio.cn`（见 `CNAME`）。
-4. 部署后如需发信，将 `LANWEI_ORDER_EMAIL_ENDPOINT` 改为线上 Worker URL 后重新发布。
+4. 部署后如需发信，将 `LANWEI_ORDER_EMAIL_ENDPOINT` 改为线上 `email-api` HTTPS URL 后重新发布。
 
 **请勿**在未配置网关时依赖真实发信；本页不会自行连接 SMTP。
 
@@ -84,7 +89,8 @@ window.LANWEI_ORDER_EMAIL_ENDPOINT = ''; // 填入 Cloudflare Worker URL，见 e
 | 文件 | 说明 |
 |------|------|
 | `index.html` | 单页应用（目录、购物车、染料选择、合同/配货单、邮件客户端） |
-| `email-worker/` | Cloudflare Worker：Resend 发信至 sales@vivebio.cn |
+| `email-api/` | Node 网关：Aliyun SMTP → sales@vivebio.cn |
+| `email-worker/` | （旧）Cloudflare Worker + Resend，已弃用为主路径 |
 | `wechat-qr.png` | 客服微信二维码（成功页展示；未放入仓库时显示「二维码待上传」占位）。 |
 | `seal.png` | 公章原图 |
 | `products.csv` | 产品目录参考 |

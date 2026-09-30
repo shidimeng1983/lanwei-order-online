@@ -1,3 +1,5 @@
+> **Deprecated as primary path.** Prefer `../email-api/` (Aliyun enterprise SMTP + nodemailer). Cloudflare Workers cannot open raw SMTP sockets.
+
 # Lanwei order email worker
 
 Cloudflare Worker that accepts order submissions from the static GitHub Pages / `order.vivebio.cn` site and emails **订购确认 + 配货单** to **`sales@vivebio.cn` only** via [Resend](https://resend.com).
