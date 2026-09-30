@@ -1150,7 +1150,7 @@
             <div class="flex-grow overflow-y-auto p-8">
                 <div id="packing-printable-area" class="text-sm leading-relaxed"></div>
             </div>
-            <div class="p-4 border-t bg-gray-50 text-right space-x-2 no-print">
+            <div class="p-4 border-t bg-gray-50 text-right space-x-2 no-print hidden" id="packing-admin-actions">
                 <button onclick="exportOrderInfo()"
                     class="bg-purple-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-purple-700 transition">输出配货单 CSV</button>
                 <button onclick="printPackingList()"
@@ -3069,6 +3069,8 @@
             if (params.get('admin') === '1') {
                 const adminTools = document.getElementById('admin-tools');
                 if (adminTools) adminTools.classList.remove('hidden');
+                const packActs=document.getElementById('packing-admin-actions');
+                if (packActs) packActs.classList.remove('hidden');
                 const hist = document.getElementById('history-section');
                 if (hist) hist.classList.remove('hidden');
                 const oneclick = document.getElementById('admin-oneclick');
