@@ -481,6 +481,50 @@
         }
         .success-banner h3 { font-size: 1.15rem; font-weight: 700; }
         .success-banner p { font-size: 0.875rem; opacity: 0.95; margin-top: 0.35rem; line-height: 1.5; }
+        .wechat-qr-box {
+            margin-top: 0.85rem;
+            padding: 0.85rem 1rem;
+            background: rgba(255,255,255,0.18);
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 0.65rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.85rem;
+        }
+        .wechat-qr-box .qr-prompt { font-size: 0.95rem; font-weight: 600; line-height: 1.45; flex: 1 1 12rem; }
+        .wechat-qr-frame {
+            width: 132px;
+            height: 132px;
+            background: #fff;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex: 0 0 auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .wechat-qr-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .wechat-qr-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0.5rem;
+            color: #6b7280;
+            font-size: 0.8rem;
+            font-weight: 600;
+            line-height: 1.35;
+            background: repeating-linear-gradient(-45deg, #f3f4f6, #f3f4f6 8px, #e5e7eb 8px, #e5e7eb 16px);
+        }
         .page-footer {
             text-align: center;
             color: rgba(255,255,255,0.9);
@@ -738,8 +782,16 @@
             </div>
             <div class="flex-grow overflow-y-auto p-6 md:p-8">
                 <div id="submit-success-banner" class="success-banner hidden no-print">
-                    <h3>订单已提交</h3>
-                    <p id="submit-success-detail">已生成订购确认合同与配货单，可下载；文件已发至销售邮箱 sales@vivebio.cn（订单部线下确认后转发仓配）。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。</p>
+                    <h3 id="submit-success-title">下单完成，将有客服联系您。</h3>
+                    <p id="submit-success-detail">请下载/打印订购确认与配货单留存。</p>
+                    <div class="wechat-qr-box" id="submit-wechat-qr-box">
+                        <div class="qr-prompt">如需联系客服，请扫码添加微信。</div>
+                        <div class="wechat-qr-frame">
+                            <img id="wechat-qr-img" src="wechat-qr.png" alt="客服微信二维码"
+                                onerror="this.style.display='none';var ph=document.getElementById('wechat-qr-placeholder'); if(ph) ph.style.display='flex';">
+                            <div id="wechat-qr-placeholder" class="wechat-qr-placeholder" style="display:none;">二维码待上传</div>
+                        </div>
+                    </div>
                 </div>
                 <div id="submit-fail-banner" class="hidden no-print mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800">
                     <h3 class="font-bold text-lg">提交未成功</h3>
@@ -786,7 +838,7 @@
 
 
     <script>
-        // 邮件网关：Cloudflare Worker URL（见仓库 email-worker/）。空字符串=仅本地生成+mailto 摘要。
+        // 邮件网关：Cloudflare Worker URL（见仓库 email-worker/）。空字符串=仅本地生成文件，绝不打开 mailto。
         // POST JSON → sales@vivebio.cn only: { to, subject, body, order, contract_html, packing_html, contract_pdf?, packing_pdf? }
         // 业务：订购确认+配货单仅发销售部；不下发客户邮箱。
         window.LANWEI_ORDER_EMAIL_ENDPOINT = '';
@@ -1628,18 +1680,21 @@
             const successBanner = document.getElementById('submit-success-banner');
             const failBanner = document.getElementById('submit-fail-banner');
             const detail = document.getElementById('submit-success-detail');
+            const titleEl = document.getElementById('submit-success-title');
             if (emailResult.ok) {
                 lastSubmitEmailOk = true;
                 successBanner.classList.remove('hidden');
                 failBanner.classList.add('hidden');
-                detail.innerHTML = emailResult.message;
-                showToast('订单已提交');
+                if (titleEl) titleEl.textContent = '下单完成，将有客服联系您。';
+                detail.innerHTML = emailResult.message || '请下载/打印订购确认与配货单留存。';
+                showToast('下单完成，将有客服联系您');
             } else if (emailResult.localOnly) {
                 lastSubmitEmailOk = null;
                 successBanner.classList.remove('hidden');
                 failBanner.classList.add('hidden');
-                detail.innerHTML = emailResult.message;
-                showToast('已生成本地文件');
+                if (titleEl) titleEl.textContent = '下单完成，将有客服联系您。';
+                detail.innerHTML = emailResult.message || '请下载/打印订购确认与配货单留存。';
+                showToast('下单完成，将有客服联系您');
             } else {
                 lastSubmitEmailOk = false;
                 successBanner.classList.add('hidden');
@@ -1753,7 +1808,8 @@
                     if (data && data.ok === false) throw new Error(data.error || 'gateway rejected');
                     return {
                         ok: true,
-                        message: '已生成订购确认合同与配货单，可下载；文件已发至销售邮箱 sales@vivebio.cn（订单部线下与客户确认付款后转发仓配）。不下发客户邮箱。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。'
+                        localOnly: false,
+                        message: '请下载/打印订购确认与配货单留存。<br><span style="opacity:0.9">已通知订单部门。</span>'
                     };
                 } catch (err) {
                     console.error('email endpoint failed', err);
@@ -1761,24 +1817,15 @@
                 }
             }
 
-            // Fallback: local downloads + mailto (no attachments)
+            // No mailto: never open the OS mail client for customers.
             try {
                 exportOrderInfo();
             } catch (e) { console.warn(e); }
-            const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            try {
-                const a = document.createElement('a');
-                a.href = mailto;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            } catch (e) { console.warn('mailto failed', e); }
 
             return {
                 ok: false,
                 localOnly: true,
-                message: '已生成订购确认合同与配货单，可下载/打印。<br>邮件网关未配置时仅本地生成文件；请联系管理员部署 email-worker 并设置 LANWEI_ORDER_EMAIL_ENDPOINT。<br>已尝试打开邮件客户端发送摘要至 sales@vivebio.cn（不含附件）。附件目标收件人仅为销售邮箱，不下发客户。<br>提交不等于自动成交，最终以双方确认后的订单为准。产品仅供科研使用（RUO），不用于临床诊断。'
+                message: '请下载/打印订购确认与配货单留存。'
             };
         }
 

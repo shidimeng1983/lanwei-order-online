@@ -20,7 +20,7 @@
 2. 打开购物车 → **填写订购信息**。
 3. 填写必填项：单位名称、联系人、手机、收货地址；**电子邮箱为选填**（若填写则校验格式）；发票与备注选填。
 4. 点击 **提交订单**。
-5. 成功后可 **下载/打印合同**、**下载/打印配货单**（浏览器打印对话框中选择「存储为 PDF」），或导出配货 CSV。
+5. 成功后显示「下单完成，将有客服联系您」与客服微信二维码；请 **下载/打印合同**、**下载/打印配货单**（浏览器打印对话框中选择「存储为 PDF」）留存，或导出配货 CSV。
 
 > 说明：合同 PDF 优先使用浏览器原生打印（避免 html2canvas 中文乱码/空白）。公章叠加在「乙方签字盖章」区域。邮件附件当前以 HTML 文档形式发出（订购确认 / 配货单）；本地仍可打印存 PDF。
 
@@ -38,7 +38,7 @@ window.LANWEI_ORDER_EMAIL_ENDPOINT = ''; // 填入 Cloudflare Worker URL，见 e
   - `order`（单位与明细）
   - `contract_html` / `packing_html`（完整 HTML）
   - `contract_pdf` / `packing_pdf`（当前为 HTML 的 base64；命名保留兼容，便于日后换真 PDF）
-- **未配置**：仍生成本地合同与配货单；自动下载配货 CSV；并尝试打开 `mailto:sales@vivebio.cn` 发送纯文本摘要（**不含附件**）。成功提示中会注明需配置网关。
+- **未配置**：仍生成本地合同与配货单；自动下载配货 CSV；**不会**打开 mailto / 系统邮件客户端。成功页提示「下单完成，将有客服联系您」，并展示客服微信二维码（`wechat-qr.png`；未上传时显示占位）。
 
 实现：仓库内 `email-worker/`（Cloudflare Worker + Resend）。收件地址固定 **`sales@vivebio.cn`**，不下发客户。
 
@@ -81,6 +81,7 @@ window.LANWEI_ORDER_EMAIL_ENDPOINT = ''; // 填入 Cloudflare Worker URL，见 e
 |------|------|
 | `index.html` | 单页应用（目录、购物车、染料选择、合同/配货单、邮件客户端） |
 | `email-worker/` | Cloudflare Worker：Resend 发信至 sales@vivebio.cn |
+| `wechat-qr.png` | 客服微信二维码（成功页展示；未放入仓库时显示「二维码待上传」占位）。 |
 | `seal.png` | 公章原图 |
 | `products.csv` | 产品目录参考 |
 | `CNAME` | GitHub Pages 自定义域 order.vivebio.cn |
