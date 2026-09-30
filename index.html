@@ -10,24 +10,58 @@
     <meta name="format-detection" content="telephone=no">
     <title>览微生物科技（上海）有限公司 · 在线下单</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="assets/logo-mark.png" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+
+        /* ViveBio v0.3 order UI — dark fluorescence KV */
+        :root {
+            --bg: #05060a;
+            --bg-2: #0a0c14;
+            --panel: rgba(255,255,255,0.045);
+            --panel-2: rgba(255,255,255,0.07);
+            --line: rgba(255,255,255,0.10);
+            --line-glow: rgba(120, 180, 255, 0.28);
+            --ink: #f2f6fb;
+            --muted: #9aa8bc;
+            --cyan: #2fd3ff;
+            --blue: #3b6dff;
+            --violet: #8a3dff;
+            --magenta: #e52d8a;
+            --grad: linear-gradient(120deg, #2fd3ff 0%, #3b6dff 32%, #8a3dff 68%, #e52d8a 100%);
+            --grad-soft: linear-gradient(135deg, rgba(47,211,255,0.25), rgba(138,61,255,0.22), rgba(229,45,138,0.18));
+            --radius: 18px;
+            --font: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+            --shadow: 0 24px 60px rgba(0,0,0,0.45);
+        }
         * {
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
         }
 
         body {
-            font-family: 'Inter', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--ink);
             background-attachment: fixed;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            /* 防止iOS Safari的橡皮筋效果 */
             overscroll-behavior-y: contain;
-            /* 防止移动端选择文本时的蓝色高亮 */
             -webkit-user-select: none;
             user-select: none;
+            min-height: 100vh;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(700px 320px at 78% 8%, rgba(47,211,255,0.14), transparent 60%),
+                radial-gradient(560px 300px at 12% 88%, rgba(229,45,138,0.10), transparent 55%),
+                var(--grad-soft);
+            opacity: 0.55;
         }
 
         /* 允许输入框选择文本 */
@@ -44,16 +78,16 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: rgba(255,255,255,0.04);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #888;
+            background: rgba(154,168,188,0.35);
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #555;
+            background: rgba(154,223,255,0.55);
         }
 
         .modal,
@@ -79,7 +113,7 @@
             left: 0;
             width: 4px;
             height: 100%;
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            background: var(--grad);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -102,36 +136,293 @@
         /* 美化筛选按钮 */
         .filter-btn-modern {
             backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--line);
+            color: #d7e0ec;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .filter-btn-modern:hover {
+            border-color: rgba(47,211,255,0.45);
+            color: #fff;
         }
 
         .filter-btn-modern.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--grad);
             color: white;
             border-color: transparent;
+            box-shadow: 0 0 24px rgba(59,109,255,0.35);
         }
 
         /* 美化标题区域 */
         .title-section {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            background: var(--panel);
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius);
+            padding: 1.75rem 1.6rem;
+            border: 1px solid var(--line);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), var(--shadow);
         }
+        .title-section h1 {
+            background: linear-gradient(100deg, #fff 10%, #bfefff 40%, #d4b8ff 75%, #ffb3da 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .title-section p { color: var(--muted) !important; }
 
         /* 主容器样式 */
         .main-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            background: var(--panel);
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius);
+            border: 1px solid var(--line);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
         }
+
+        /* Top strip + sticky header (marketing-site vibe) */
+        .topbar {
+            background: #03040a;
+            color: #7f8ea3;
+            font-size: 0.8rem;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .topbar .wrap {
+            width: min(100% - 2rem, 80rem);
+            margin-inline: auto;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .topbar a { color: #9adfff; text-decoration: none; }
+        .topbar a:hover { color: #fff; }
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: rgba(5,6,10,0.82);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--line);
+        }
+        .site-header .nav {
+            width: min(100% - 2rem, 80rem);
+            margin-inline: auto;
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--ink);
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .logo img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 12px rgba(47,211,255,0.35));
+        }
+        .logo small {
+            display: block;
+            font-weight: 500;
+            color: var(--muted);
+            font-size: 0.72rem;
+            margin-top: 1px;
+        }
+        .header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+        .vb-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.65rem 1.1rem; border-radius: 999px; font-weight: 700;
+            border: 1px solid transparent; font-size: 0.9rem; cursor: pointer;
+            transition: filter .18s ease, border-color .18s ease, transform .18s ease;
+        }
+        .vb-btn-primary {
+            background: var(--grad);
+            color: #fff !important;
+            box-shadow: 0 0 28px rgba(138,61,255,0.35);
+        }
+        .vb-btn-primary:hover { filter: brightness(1.08); }
+        .vb-btn-ghost {
+            background: rgba(255,255,255,0.04);
+            color: #fff !important;
+            border-color: rgba(255,255,255,0.22);
+        }
+        .vb-btn-ghost:hover { border-color: rgba(47,211,255,0.55); }
+        .ruo-chip {
+            display: inline-flex; align-items: center;
+            padding: 0.28rem 0.7rem; border-radius: 999px;
+            border: 1px solid rgba(47,211,255,0.35);
+            background: rgba(8,16,28,0.55);
+            color: #9adfff;
+            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.03em;
+        }
+
+        /* Product cards dark glass */
+        .product-card {
+            background: var(--panel) !important;
+            border: 1px solid var(--line) !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04) !important;
+            color: var(--ink);
+        }
+        .product-card:hover {
+            border-color: rgba(47,211,255,0.35) !important;
+            box-shadow: 0 0 30px rgba(59,109,255,0.15) !important;
+        }
+        .product-card h3 { color: var(--ink) !important; }
+        .product-card .text-gray-400,
+        .product-card .text-gray-600 { color: var(--muted) !important; }
+        .product-card .border-gray-100 { border-color: var(--line) !important; }
+        .product-card .price-grad {
+            background: var(--grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .product-card .add-btn {
+            background: var(--grad) !important;
+            box-shadow: 0 0 18px rgba(59,109,255,0.35);
+        }
+
+        /* Dark modal shells (screen only; print stays paper) */
+        #cart-content,
+        #dyeSelectionModal > div,
+        #customerInfoModal > div,
+        #productDetailModal > div,
+        #contractModal > div,
+        #packingModal > div {
+            background: #0c101a !important;
+            color: var(--ink);
+            border: 1px solid var(--line);
+        }
+        #cart-content .bg-white,
+        #cart-content .border-b,
+        #cart-content .border-t,
+        #dyeSelectionModal .border-b,
+        #dyeSelectionModal .border-t,
+        #dyeSelectionModal .bg-gray-50,
+        #customerInfoModal .border-b,
+        #customerInfoModal .border-t,
+        #customerInfoModal .bg-gray-50,
+        #productDetailModal .border-b,
+        #contractModal .border-b,
+        #contractModal .border-t,
+        #contractModal .bg-gray-50,
+        #packingModal .border-b,
+        #packingModal .border-t,
+        #packingModal .bg-gray-50 {
+            background: rgba(255,255,255,0.03) !important;
+            border-color: var(--line) !important;
+            color: var(--ink);
+        }
+        #cartModal h2, #dyeSelectionModal h2, #customerInfoModal h2,
+        #productDetailModal h2, #contractModal h2, #packingModal h2,
+        #modal-detail-title {
+            color: var(--ink) !important;
+        }
+        #cartModal .text-gray-500, #cartModal .text-gray-700,
+        #dyeSelectionModal .text-gray-500, #dyeSelectionModal .text-gray-600,
+        #customerInfoModal .text-gray-500, #customerInfoModal .text-gray-700,
+        #productDetailModal .text-gray-600, #productDetailModal .text-gray-700,
+        #productDetailModal .text-blue-600,
+        #contractModal .text-gray-500 {
+            color: var(--muted) !important;
+        }
+        #customerInfoModal label { color: #c5d0e0 !important; }
+        #customerInfoModal input,
+        #customerInfoModal textarea,
+        #customerInfoModal select,
+        #dyeSelectionModal select,
+        #history-section select {
+            background: rgba(255,255,255,0.05) !important;
+            border: 1px solid var(--line) !important;
+            color: var(--ink) !important;
+            border-radius: 0.65rem !important;
+        }
+        #customerInfoModal input::placeholder,
+        #customerInfoModal textarea::placeholder {
+            color: #6f7f94 !important;
+        }
+        #cart-total { color: #ff8ec8 !important; }
+        #modal-detail-components { color: #d7e0ec !important; }
+
+        /* Primary actions → ViveBio gradient pills */
+        button.bg-blue-600,
+        button.bg-green-600,
+        button.bg-blue-500 {
+            background: var(--grad) !important;
+            border: none;
+            box-shadow: 0 0 22px rgba(138,61,255,0.28);
+        }
+        button.bg-blue-600:hover,
+        button.bg-green-600:hover,
+        button.bg-blue-500:hover {
+            filter: brightness(1.08);
+        }
+
+        /* Cart icon chip */
+        #cart-icon {
+            background: rgba(255,255,255,0.06) !important;
+            border: 1px solid var(--line);
+        }
+        #cart-icon svg { color: #d7e0ec !important; }
+        #cart-icon:hover { border-color: rgba(47,211,255,0.45); }
+
+        .success-banner {
+            background: linear-gradient(120deg, rgba(47,211,255,0.22), rgba(138,61,255,0.28), rgba(229,45,138,0.22)) !important;
+            border: 1px solid var(--line-glow);
+            color: #fff;
+        }
+        .wechat-qr-box {
+            background: rgba(0,0,0,0.28) !important;
+            border-color: rgba(255,255,255,0.18) !important;
+        }
+        #submit-fail-banner {
+            background: rgba(229,45,138,0.12) !important;
+            border-color: rgba(229,45,138,0.35) !important;
+            color: #ffb3da !important;
+        }
+
+        .page-footer {
+            text-align: center;
+            color: #8a98ab !important;
+            padding: 1.5rem 1rem 2rem;
+            font-size: 0.875rem;
+            border-top: 1px solid var(--line);
+            background: #03040a;
+            margin-top: 2rem;
+        }
+        .page-footer a { color: #9adfff; }
+
 
         /* 打印样式 - 修正版 */
         @media print {
+            /* Keep contract/packing as light paper regardless of dark screen UI */
+            #contractModal > div,
+            #packingModal > div,
+            #contract-printable-area,
+            #packing-printable-area {
+                background: #fff !important;
+                color: #000 !important;
+                border: none !important;
+            }
+            #contract-printable-area *,
+            #packing-printable-area * {
+                color: #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            #contract-printable-area .contract-banner {
+                background: #f5f3ff !important;
+                color: #4c1d95 !important;
+                border: 1px solid #c4b5fd !important;
+            }
+            body::before { display: none !important; }
 
             /* 按当前打印目标隐藏其它元素 */
             body.print-packing > *:not(#packingModal) {
@@ -525,20 +816,87 @@
             line-height: 1.35;
             background: repeating-linear-gradient(-45deg, #f3f4f6, #f3f4f6 8px, #e5e7eb 8px, #e5e7eb 16px);
         }
-        .page-footer {
-            text-align: center;
-            color: rgba(255,255,255,0.9);
-            padding: 1.5rem 1rem 2rem;
-            font-size: 0.875rem;
+
+
+        .cart-item-row {
+            background: rgba(255,255,255,0.045);
+            border: 1px solid var(--line);
+        }
+        .qty-btn {
+            background: rgba(255,255,255,0.08);
+            color: var(--ink);
+            border: 1px solid var(--line);
+        }
+        .qty-btn:hover { border-color: rgba(47,211,255,0.45); }
+
+        /* Contract/packing preview: light paper panel on dark modal (print CSS overrides separately) */
+        #contract-printable-area,
+        #packing-printable-area {
+            background: #fff;
+            color: #111;
+            border-radius: 12px;
+            padding: 1.25rem 1.35rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
+        }
+        #contract-printable-area *,
+        #packing-printable-area * {
+            color: inherit;
+        }
+        #contract-printable-area .contract-banner {
+            color: #4c1d95;
+        }
+        #contract-printable-area .contract-footer-note {
+            color: #4b5563;
         }
 </style>
 </head>
 
-<body class="text-gray-800">
+<body class="text-gray-100">
+
+    <div class="topbar">
+        <div class="wrap">
+            <span>仅供科研使用 · Research Use Only (RUO)</span>
+            <span><a href="mailto:sales@vivebio.cn">sales@vivebio.cn</a> · <a href="https://www.vivebio.cn" target="_blank" rel="noopener">www.vivebio.cn</a></span>
+        </div>
+    </div>
+    <header class="site-header">
+        <div class="nav">
+            <a class="logo" href="https://www.vivebio.cn" target="_blank" rel="noopener" aria-label="览微生物官网">
+                <img src="assets/logo-mark.png" alt="览微生物 Logo" width="40" height="40" />
+                <div>
+                    <span>览微生物 · 在线下单</span>
+                    <small>ViveBio · Illuminating the future</small>
+                </div>
+            </a>
+            <div class="header-actions">
+                <span class="ruo-chip">RUO</span>
+                <div id="admin-tools" class="hidden flex flex-wrap gap-2">
+                    <button type="button" onclick="document.getElementById('csv-file-input').click()"
+                        class="vb-btn vb-btn-ghost">导入</button>
+                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;"
+                        onchange="importProductsFromCSV(event)">
+                    <button type="button" onclick="exportProductsToCSV()"
+                        class="vb-btn vb-btn-ghost">导出</button>
+                </div>
+                <div id="cart-icon" class="relative cursor-pointer btn-modern rounded-xl p-2.5"
+                    onclick="toggleCart()" title="购物车">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                        class="h-6 w-6 transition" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span id="cart-count"
+                        class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
 
     <!-- Toast 通知 -->
     <div id="toast"
-        class="toast fixed top-5 right-5 bg-green-500 text-white py-3 px-6 rounded-xl shadow-lg opacity-0 transform -translate-y-10 z-[100]">
+        class="toast fixed top-5 right-5 bg-emerald-600 text-white py-3 px-6 rounded-xl shadow-lg opacity-0 transform -translate-y-10 z-[100]">
         <p id="toast-message" class="font-medium">已添加到购物车！</p>
     </div>
 
@@ -547,42 +905,11 @@
         <div class="title-section mb-6">
             <div class="flex items-center justify-between flex-wrap gap-4">
                 <div class="text-center sm:text-left flex-1">
-                    <h1
-                        class="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                        览微生物科技（上海）有限公司 · 在线下单</h1>
-                    <p class="text-sm sm:text-base text-gray-600 mt-3 leading-relaxed max-w-3xl">
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold">
+                        在线下单</h1>
+                    <p class="text-sm sm:text-base mt-3 leading-relaxed max-w-3xl">
                         本页用于选购 TSA 荧光试剂盒及配套试剂。请选择产品与数量，填写单位与收货信息后提交；订单将发送至览微，我们收到后与您确认。提交不等于自动成交，以双方确认后的订单为准。所列价格为目录价，最终以确认订单为准。产品仅供科研使用（RUO），不用于临床诊断。
                     </p>
-                </div>
-
-                <!-- 按钮容器 -->
-                <div class="flex flex-wrap gap-2 justify-center">
-                    <!-- 管理员导入/导出：仅 ?admin=1 显示 -->
-                    <div id="admin-tools" class="hidden flex flex-wrap gap-2">
-                        <button onclick="document.getElementById('csv-file-input').click()"
-                            class="btn-modern bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium">
-                            导入
-                        </button>
-                        <input type="file" id="csv-file-input" accept=".csv" style="display: none;"
-                            onchange="importProductsFromCSV(event)">
-                        <button onclick="exportProductsToCSV()"
-                            class="btn-modern bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 font-medium">
-                            导出
-                        </button>
-                    </div>
-
-                    <!-- 购物车图标 -->
-                    <div id="cart-icon" class="relative cursor-pointer btn-modern bg-white rounded-xl p-2.5"
-                        onclick="toggleCart()">
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                            class="h-6 w-6 text-gray-700 hover:text-purple-600 transition" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span id="cart-count"
-                            class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
-                    </div>
                 </div>
             </div>
         </div>
@@ -612,7 +939,7 @@
     </div>
 
     <footer class="page-footer">
-        © 览微生物科技（上海）有限公司　产品仅供科研使用（RUO）
+        © 览微生物科技（上海）有限公司　产品仅供科研使用（RUO）　·　<a href="https://www.vivebio.cn" target="_blank" rel="noopener">官网</a>
     </footer>
 
     <!-- 购物车 Modal -->
@@ -1220,12 +1547,12 @@
 
         function createProductCard(product) {
             const card = document.createElement('div');
-            let badgeColor = 'bg-gradient-to-r from-blue-400 to-blue-500';
-            if (product.spec.includes('100测试')) badgeColor = 'bg-gradient-to-r from-purple-400 to-purple-500';
-            else if (product.spec.includes('50测试')) badgeColor = 'bg-gradient-to-r from-pink-400 to-pink-500';
-            else if (product.spec.includes('5测试')) badgeColor = 'bg-gradient-to-r from-yellow-400 to-yellow-500';
+            let badgeColor = 'bg-gradient-to-r from-cyan-400 to-blue-500';
+            if (product.spec.includes('100测试')) badgeColor = 'bg-gradient-to-r from-violet-500 to-fuchsia-500';
+            else if (product.spec.includes('50测试')) badgeColor = 'bg-gradient-to-r from-blue-500 to-violet-500';
+            else if (product.spec.includes('5测试')) badgeColor = 'bg-gradient-to-r from-amber-400 to-orange-500';
 
-            card.className = `product-card bg-white rounded-2xl shadow-md p-6 flex flex-col justify-between hover:shadow-2xl hover:-translate-y-2 transition-all duration-300`;
+            card.className = `product-card rounded-2xl p-6 flex flex-col justify-between hover:-translate-y-1 transition-all duration-300`;
             card.dataset.category = product.category;
 
             card.innerHTML = `
@@ -1241,9 +1568,9 @@
                 </div>
                 <div class="flex justify-between items-center pt-4 border-t border-gray-100">
                     <div>
-                        <p class="text-2xl font-bold bg-gradient-to-r from-red-500 to-pink-500 bg-clip-text text-transparent">¥${product.price.toFixed(2)}</p>
+                        <p class="text-2xl font-bold price-grad">¥${product.price.toFixed(2)}</p>
                     </div>
-                    <button onclick='addToCart(event, ${JSON.stringify(product)})' class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl p-2.5 hover:from-indigo-600 hover:to-purple-700 transition-all z-10 shadow-md hover:shadow-lg">
+                    <button onclick='addToCart(event, ${JSON.stringify(product)})' class="add-btn text-white rounded-xl p-2.5 transition-all z-10">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
                         </svg>
@@ -1438,11 +1765,11 @@
         function updateCart() {
             cartItemsContainer.innerHTML = '';
             if (cart.length === 0) {
-                cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center mt-10">您的购物车是空的</p>';
+                cartItemsContainer.innerHTML = '<p class="text-center mt-10" style="color:var(--muted)">您的购物车是空的</p>';
             } else {
                 cart.forEach(item => {
                     const itemElement = document.createElement('div');
-                    itemElement.className = 'flex items-center justify-between bg-white p-4 rounded-lg shadow mb-3';
+                    itemElement.className = 'flex items-center justify-between cart-item-row p-4 rounded-lg mb-3';
 
                     // Determine identifier for changeQuantity
                     let identifier = 'null';
@@ -1454,8 +1781,8 @@
 
                     itemElement.innerHTML = `
                         <div class="w-2/3">
-                            <p class="font-semibold text-gray-800">${item.name}</p>
-                            <p class="text-sm text-gray-500">${item.catalog}</p>
+                            <p class="font-semibold text-gray-100">${item.name}</p>
+                            <p class="text-sm text-gray-400">${item.catalog}</p>
                             ${item.selectedDyes && item.selectedDyes.length > 0 ?
                             `<p class="text-xs text-blue-600 mt-1">已选染料: ${item.selectedDyes.map(d => {
                                 const dye = dyeData[d] || dyeOptions.find(opt => opt.catalog === d);
@@ -1465,12 +1792,12 @@
                              ${item.subCode ?
                             `<p class="text-xs text-purple-600 mt-1">已选组合: ${item.subCode}</p>` : ''
                         }
-                            <p class="text-md font-bold text-red-500 mt-1">¥${item.price.toFixed(2)}</p>
+                            <p class="text-md font-bold price-grad mt-1">¥${item.price.toFixed(2)}</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button onclick="changeQuantity('${item.catalog}', -1, ${identifier})" class="bg-gray-200 rounded-full w-7 h-7 font-bold">-</button>
+                            <button onclick="changeQuantity('${item.catalog}', -1, ${identifier})" class="qty-btn rounded-full w-7 h-7 font-bold">-</button>
                             <span>${item.quantity}</span>
-                            <button onclick="changeQuantity('${item.catalog}', 1, ${identifier})" class="bg-gray-200 rounded-full w-7 h-7 font-bold">+</button>
+                            <button onclick="changeQuantity('${item.catalog}', 1, ${identifier})" class="qty-btn rounded-full w-7 h-7 font-bold">+</button>
                         </div>
                     `;
                     cartItemsContainer.appendChild(itemElement);
