@@ -2511,7 +2511,7 @@
                         ok: true,
                         localOnly: false,
                         usedPdf: usePdf,
-                        message: '请下载合同 PDF 留存。<br><span style="opacity:0.9">订购合同与配货单已发至订单邮箱。</span>'
+                        message: '请下载合同 PDF 留存。'
                     };
                 } catch (err) {
                     console.error('email endpoint failed', err);
@@ -3084,9 +3084,7 @@
                         contractPdfBase64
                     });
                     if (emailResult && emailResult.ok && !emailResult.localOnly) {
-                        showToast(emailResult.usedPdf
-                            ? '订购合同(PDF)与配货单已发至订单邮箱'
-                            : '合同与配货单已发至订单邮箱');
+                        showToast('合同 PDF 已就绪');
                     }
                 } catch (err) {
                     console.error('sales email on print failed', err);
