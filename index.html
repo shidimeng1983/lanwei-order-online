@@ -1194,7 +1194,7 @@
 
     <script>
         // 邮件网关：email-api（Aliyun SMTP / nodemailer）公网 HTTPS。空字符串=仅本地生成文件，绝不打开 mailto。
-        // POST JSON → sales@vivebio.cn only: contract as PDF (contract_pdf base64) when available; packing HTML (CSV later)
+        // POST JSON → sales@vivebio.cn only: contract PDF + warehouse packing CSV
         // 业务：订购确认+配货单仅发销售部；不下发客户邮箱。
         window.LANWEI_ORDER_EMAIL_ENDPOINT = 'https://dangerous-offers-ward-someone.trycloudflare.com';
 
@@ -2311,13 +2311,14 @@
             const endpoint = (window.LANWEI_ORDER_EMAIL_ENDPOINT || '').trim();
 
             const contractDoc = wrapDocHtml(`订购合同_${order.name}_${d.dateIso}`, contractHtml);
-            const packingDoc = wrapDocHtml(`配货单_${order.name}_${d.dateIso}`, packingHtml);
-            const packingB64 = utf8ToBase64(packingDoc);
 
             const usePdf = !!(contractPdfBase64 && String(contractPdfBase64).startsWith('JVBERi'));
             const contractFilename = usePdf
                 ? `订购合同_${order.name}_${d.dateShort}.pdf`
                 : `订购合同_${order.name}_${d.dateShort}.html`;
+
+            const packingBuilt = buildWarehousePackingCsv(order);
+            const packingCsv = packingBuilt.csvContent;
 
             const payload = {
                 to: to,
@@ -2336,13 +2337,14 @@
                         selectedDyes: i.selectedDyes || []
                     }))
                 },
-                contract_html: contractDoc,
-                packing_html: packingDoc,
-                // Packing stays HTML for now (CSV content format is a follow-up task)
-                packing_pdf: packingB64,
-                packing_filename: `配货单_${order.name}_${d.dateShort}.html`,
+                // Warehouse packing CSV (same columns as docs/packing-template-warehouse.xlsx)
+                packing_csv: packingCsv,
+                packing_filename: packingBuilt.filename,
+                contract_html: usePdf ? undefined : contractDoc,
                 contract_filename: contractFilename
             };
+            // Drop undefined keys
+            Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
 
             if (usePdf) {
                 payload.contract_pdf = contractPdfBase64;
@@ -2894,58 +2896,53 @@
             }
         }
 
-        // --- Export Order Info to CSV ---
-        // --- Export Order Info to CSV ---
+        // --- Warehouse packing CSV (template: docs/packing-template-warehouse.xlsx) ---
+        // Columns: Order_ID,Customer,Finished_SKU,Qty,Req_Date,Contact,Mobile,Address
+        function buildWarehousePackingCsv(customerInfo) {
+            const d = formatOrderDateParts();
+            const orderId = `${customerInfo.name}_${d.dateShort}`;
+            const customer = customerInfo.name || '';
+            const contact = customerInfo.agent || customerInfo.recipientName || '';
+            const mobile = String(customerInfo.phone || customerInfo.recipientPhone || '');
+            const address = customerInfo.address || customerInfo.recipientAddress || '';
+            let csvContent = 'Order_ID,Customer,Finished_SKU,Qty,Req_Date,Contact,Mobile,Address\n';
+
+            const pushRow = (sku, qty) => {
+                csvContent += [
+                    escapeCSV(orderId),
+                    escapeCSV(customer),
+                    escapeCSV(String(sku || '')),
+                    String(qty),
+                    d.dateIso,
+                    escapeCSV(contact),
+                    escapeCSV(mobile),
+                    escapeCSV(address)
+                ].join(',') + '\n';
+            };
+
+            cart.forEach((item) => {
+                pushRow(item.subCode || item.catalog, item.quantity);
+            });
+
+            // Legacy global dye selection → extra Finished_SKU rows
+            if (customerInfo.selectedDyes && customerInfo.selectedDyes.length > 0) {
+                customerInfo.selectedDyes.forEach((catalog) => pushRow(catalog, 1));
+            }
+
+            return {
+                csvContent,
+                filename: `${customerInfo.name}_${d.dateShort}.csv`,
+                orderId
+            };
+        }
+
         window.exportOrderInfo = function () {
             if (!currentCustomerInfo.name || cart.length === 0) {
                 showToast('没有可导出的订单信息');
                 return;
             }
 
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = (today.getMonth() + 1).toString().padStart(2, '0');
-            const day = today.getDate().toString().padStart(2, '0');
-            const dateStr = `${year}${month}${day}`;
-            const reqDate = `${year}-${month}-${day}`;
-
-            // Order ID: 甲方名称_订单日期
-            const orderId = `${currentCustomerInfo.name}_${dateStr}`;
-
-            // CSV头部
-            let csvContent = `Order_ID,Customer,Finished_SKU,Qty,Req_Date,Contact,Mobile,Address\n`;
-
-            // 遍历购物车中的产品
-            cart.forEach((item) => {
-                const customer = escapeCSV(currentCustomerInfo.name);
-                // Finished_SKU: logic is SubCode if present, else Catalog
-                const finishedSku = escapeCSV(item.subCode || item.catalog);
-                const quantity = item.quantity;
-                const contact = escapeCSV(currentCustomerInfo.agent || currentCustomerInfo.recipientName || '');
-                const mobile = escapeCSV(currentCustomerInfo.phone || currentCustomerInfo.recipientPhone || '');
-                const address = escapeCSV(currentCustomerInfo.address || currentCustomerInfo.recipientAddress || '');
-
-                csvContent += `${escapeCSV(orderId)},${customer},${finishedSku},${quantity},${reqDate},${contact},${mobile},${address}\n`;
-            });
-
-            // 添加选中的荧光染料 (Legacy global selection)
-            if (currentCustomerInfo.selectedDyes && currentCustomerInfo.selectedDyes.length > 0) {
-                currentCustomerInfo.selectedDyes.forEach(catalog => {
-                    const customer = escapeCSV(currentCustomerInfo.name);
-                    const finishedSku = escapeCSV(catalog);
-                    const quantity = 1;
-                    const contact = escapeCSV(currentCustomerInfo.agent || currentCustomerInfo.recipientName || '');
-                    const mobile = escapeCSV(currentCustomerInfo.phone || currentCustomerInfo.recipientPhone || '');
-                    const address = escapeCSV(currentCustomerInfo.address || currentCustomerInfo.recipientAddress || '');
-
-                    csvContent += `${escapeCSV(orderId)},${customer},${finishedSku},${quantity},${reqDate},${contact},${mobile},${address}\n`;
-                });
-            }
-
-            // 生成文件名：采购方名称_日期
-            const filename = `${currentCustomerInfo.name}_${dateStr}.csv`;
-
-            // 创建下载链接
+            const { csvContent, filename } = buildWarehousePackingCsv(currentCustomerInfo);
             const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
@@ -2955,8 +2952,9 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            URL.revokeObjectURL(url);
 
-            showToast('订单信息已导出为CSV文件');
+            showToast('配货单 CSV 已导出');
         }
 
         // --- One Click Export Function ---
