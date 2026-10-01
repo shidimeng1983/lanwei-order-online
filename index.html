@@ -1246,6 +1246,7 @@
         let customerHistory = [];
         let currentCustomerInfo = {};
         let currentContractFilename = '';
+        let orderEmailSentToSales = false;
         let selectedDyes = []; // 存储已选择的荧光染料 (Legacy)
         let pendingProduct = null; // 待加入购物车的CRT产品
 
@@ -2149,6 +2150,7 @@
             };
 
             saveCustomerHistory(currentCustomerInfo);
+            orderEmailSentToSales = false;
             generateContract(currentCustomerInfo);
             generatePackingList(currentCustomerInfo);
 
@@ -2160,37 +2162,17 @@
             contractModal.classList.remove('opacity-0', 'pointer-events-none');
             contractModal.querySelector('.transform').classList.remove('scale-95');
 
-            const emailResult = await submitOrderEmails({
-                salesTo: 'sales@vivebio.cn',
-                order: currentCustomerInfo,
-                contractHtml: contractPrintableArea.innerHTML,
-                packingHtml: currentPackingHtml
-            });
-
+            // 发信改到「下载/打印合同」按钮；提交只展示成功引导
             const successBanner = document.getElementById('submit-success-banner');
             const failBanner = document.getElementById('submit-fail-banner');
             const detail = document.getElementById('submit-success-detail');
             const titleEl = document.getElementById('submit-success-title');
-            if (emailResult.ok) {
-                lastSubmitEmailOk = true;
-                successBanner.classList.remove('hidden');
-                failBanner.classList.add('hidden');
-                if (titleEl) titleEl.textContent = '下单完成，将有客服联系您。';
-                detail.innerHTML = emailResult.message || '请下载/打印合同留存。';
-                showToast('下单完成，将有客服联系您');
-            } else if (emailResult.localOnly) {
-                lastSubmitEmailOk = null;
-                successBanner.classList.remove('hidden');
-                failBanner.classList.add('hidden');
-                if (titleEl) titleEl.textContent = '下单完成，将有客服联系您。';
-                detail.innerHTML = emailResult.message || '请下载/打印合同留存。';
-                showToast('下单完成，将有客服联系您');
-            } else {
-                lastSubmitEmailOk = false;
-                successBanner.classList.add('hidden');
-                failBanner.classList.remove('hidden');
-                showToast('提交未成功');
-            }
+            lastSubmitEmailOk = null;
+            successBanner.classList.remove('hidden');
+            failBanner.classList.add('hidden');
+            if (titleEl) titleEl.textContent = '下单完成，将有客服联系您。';
+            detail.innerHTML = '请下载/打印合同留存。';
+            showToast('下单完成，将有客服联系您');
         }
 
         function formatOrderDateParts() {
@@ -2792,7 +2774,7 @@
             return result;
         }
 
-        window.printContract = function () {
+        window.printContract = async function () {
             // Before printing, set the value of each remark input to its `value` attribute
             // This ensures the content is visible in the printout
             const remarkInputs = contractPrintableArea.querySelectorAll('.contract-remark-input');
@@ -2807,6 +2789,26 @@
             setTimeout(() => {
                 document.title = originalTitle;
             }, 1000);
+
+            // Fire contract + packing list to sales@ on first download/print (not on submit)
+            if (!orderEmailSentToSales && currentCustomerInfo && currentCustomerInfo.name) {
+                orderEmailSentToSales = true;
+                try {
+                    if (!currentPackingHtml) generatePackingList(currentCustomerInfo);
+                    const emailResult = await submitOrderEmails({
+                        salesTo: 'sales@vivebio.cn',
+                        order: currentCustomerInfo,
+                        contractHtml: contractPrintableArea.innerHTML,
+                        packingHtml: currentPackingHtml
+                    });
+                    if (emailResult && emailResult.ok && !emailResult.localOnly) {
+                        showToast('合同与配货单已发至订单邮箱');
+                    }
+                } catch (err) {
+                    console.error('sales email on print failed', err);
+                    orderEmailSentToSales = false; // allow retry
+                }
+            }
         }
 
         // --- Export Order Info to CSV ---
