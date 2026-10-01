@@ -832,19 +832,34 @@
         /* Contract/packing preview: light paper panel on dark modal (print CSS overrides separately) */
         #contract-printable-area,
         #packing-printable-area {
-            background: #fff;
-            color: #111;
+            background: #fff !important;
+            color: #111 !important;
             border-radius: 12px;
             padding: 1.25rem 1.35rem;
             border: 1px solid rgba(255,255,255,0.08);
             box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
         }
-        #contract-printable-area *,
-        #packing-printable-area * {
-            color: inherit;
+        /* Beat dark-theme rules on .border-b etc. so table text stays readable on white paper */
+        #contract-printable-area,
+        #contract-printable-area *:not(input):not(textarea),
+        #packing-printable-area,
+        #packing-printable-area *:not(input):not(textarea) {
+            color: #111 !important;
+        }
+        #contract-printable-area input,
+        #contract-printable-area textarea,
+        #packing-printable-area input,
+        #packing-printable-area textarea {
+            color: #111 !important;
+            background: #fff !important;
+            border: 1px solid #d1d5db !important;
         }
         #contract-printable-area .contract-banner {
-            color: #4c1d95;
+            color: #4c1d95 !important;
+        }
+        #contract-printable-area thead tr,
+        #packing-printable-area thead tr {
+            background: #f3f4f6 !important;
         }
         #contract-printable-area .contract-footer-note {
             color: #4b5563;
@@ -2266,13 +2281,18 @@
 
                 const defaultRemark = itemDyeRemark ? itemDyeRemark.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
 
+                const sku = item.subCode || item.catalog || '';
+                const pname = item.name || '';
+                const pspec = item.spec || '';
+                const pqty = item.quantity != null ? item.quantity : '';
+                const pprice = Number(item.price) || 0;
                 productRows += `
                      <tr class="border-b border-gray-300">
-                         <td class="p-2">${item.catalog}</td>
-                         <td class="p-2">${item.name}</td>
-                         <td class="p-2">${item.spec}</td>
-                         <td class="p-2 text-center">${item.quantity}</td>
-                         <td class="p-2 text-right">¥${item.price.toFixed(2)}</td>
+                         <td class="p-2">${sku}</td>
+                         <td class="p-2">${pname}</td>
+                         <td class="p-2">${pspec}</td>
+                         <td class="p-2 text-center">${pqty}</td>
+                         <td class="p-2 text-right">¥${pprice.toFixed(2)}</td>
                          <td class="p-2 text-right">¥${subtotal.toFixed(2)}</td>
                          <td class="p-2">
                             <input type="text" class="w-full border rounded p-1 contract-remark-input" data-index="${productIndex}" placeholder="添加备注..." value="${defaultRemark}">
