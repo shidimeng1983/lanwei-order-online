@@ -44,17 +44,17 @@ window.LANWEI_ORDER_EMAIL_ENDPOINT = ''; // 填入 email-api 公网 HTTPS，见 
   - `contract_pdf` / `packing_pdf`（当前为 HTML 的 base64；命名保留兼容，便于日后换真 PDF）
 - **未配置**：仍生成本地合同与配货单；**不会**打开 mailto / 系统邮件客户端，也**不会**自动下载配货 CSV。成功页提示「下单完成，将有客服联系您」「请下载/打印订购确认合同留存」，并展示客服微信二维码（`wechat-qr.png`；未上传时显示占位）。
 
-实现：**`email-api/`**（Node + Express + **nodemailer** + 阿里云企业邮 SMTP）。Cloudflare Workers 无法建 SMTP 套接字，故不用 Worker 直连 SMTP。收件固定 **`sales@vivebio.cn`**，From **`orders@vivebio.cn`**。网关成功时成功页可附「订购确认与配货单已发至订单邮箱」。
+实现：**`email-api/`**（Node + Express + **nodemailer** + 阿里云企业邮 SMTP）。Cloudflare Workers 无法建 SMTP 套接字，故不用 Worker 直连 SMTP。收件固定 **`sales@vivebio.cn`**，From **`order@vivebio.cn`**。网关成功时成功页可附「订购确认与配货单已发至订单邮箱」。
 
 旧版 `email-worker/`（Resend）保留作参考，当前主路径为 `email-api/`。
 
 ### 部署邮件网关（Aliyun SMTP）
 
-1. 阿里云企业邮管理后台：为 `orders@vivebio.cn` **允许第三方客户端**，并开启 SMTP；在网页端生成 **第三方客户端安全密码**。
+1. 阿里云企业邮管理后台：为 `order@vivebio.cn` **允许第三方客户端**，并开启 SMTP；在网页端生成 **第三方客户端安全密码**。
 2. 在运行主机设置环境变量（勿提交仓库）：
    - `ALIYUN_MAIL_SMTP_PASS` = 第三方客户端密码
-   - `SMTP_USER=orders@vivebio.cn`（默认）
-   - `FROM_EMAIL=订单通知 <orders@vivebio.cn>`
+   - `SMTP_USER=order@vivebio.cn`（默认）
+   - `FROM_EMAIL=订单通知 <order@vivebio.cn>`
    - `SALES_TO=sales@vivebio.cn`
 3. `cd email-api && npm install && npm run test-send`（应成功发到 sales@）→ `npm start`（默认 `:8787`）。
 4. 用 **Railway / Fly / Render / 具名 cloudflared tunnel / VPS** 暴露公网 HTTPS（quick tunnel URL 会变，勿用于生产）。

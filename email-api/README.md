@@ -9,8 +9,8 @@ Accepts the same POST JSON as the old Resend worker and emails **订购确认 + 
 | Env | Value |
 |-----|--------|
 | `ALIYUN_MAIL_SMTP_PASS` | Aliyun enterprise mail **第三方客户端密码** |
-| `SMTP_USER` | `orders@vivebio.cn` (default) |
-| `FROM_EMAIL` | `订单通知 <orders@vivebio.cn>` |
+| `SMTP_USER` | `order@vivebio.cn` (default) |
+| `FROM_EMAIL` | `订单通知 <order@vivebio.cn>` |
 | `SALES_TO` | `sales@vivebio.cn` |
 
 SMTP: `smtp.qiye.aliyun.com:465` SSL.

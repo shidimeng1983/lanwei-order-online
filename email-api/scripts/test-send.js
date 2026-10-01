@@ -6,9 +6,9 @@ const nodemailer = require('nodemailer');
 
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.qiye.aliyun.com';
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
-const SMTP_USER = process.env.SMTP_USER || 'orders@vivebio.cn';
+const SMTP_USER = process.env.SMTP_USER || 'order@vivebio.cn';
 const SMTP_PASS = process.env.ALIYUN_MAIL_SMTP_PASS || process.env.SMTP_PASS || '';
-const FROM_EMAIL = (process.env.FROM_EMAIL || '订单通知 <orders@vivebio.cn>').trim();
+const FROM_EMAIL = (process.env.FROM_EMAIL || '订单通知 <order@vivebio.cn>').trim();
 const SALES_TO = (process.env.SALES_TO || 'sales@vivebio.cn').trim();
 
 if (!SMTP_PASS) {
@@ -33,7 +33,7 @@ if (!SMTP_PASS) {
     from: FROM_EMAIL,
     to: SALES_TO,
     subject: `【览微邮件网关测试】${stamp}`,
-    text: `这是一封自动测试邮件（Aliyun SMTP / nodemailer）。\n时间：${stamp}\nFrom：orders@vivebio.cn\nTo：sales@vivebio.cn\n若收到此信，说明下单邮件通道可用。`,
+    text: `这是一封自动测试邮件（Aliyun SMTP / nodemailer）。\n时间：${stamp}\nFrom：order@vivebio.cn\nTo：sales@vivebio.cn\n若收到此信，说明下单邮件通道可用。`,
     attachments: [
       {
         filename: 'test-contract.html',

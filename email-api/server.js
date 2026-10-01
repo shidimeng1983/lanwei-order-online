@@ -12,14 +12,16 @@ const nodemailer = require('nodemailer');
 const PORT = Number(process.env.PORT || 8787);
 const SMTP_HOST = process.env.SMTP_HOST || 'smtp.qiye.aliyun.com';
 const SMTP_PORT = Number(process.env.SMTP_PORT || 465);
-const SMTP_USER = process.env.SMTP_USER || 'orders@vivebio.cn';
+const SMTP_USER = process.env.SMTP_USER || 'order@vivebio.cn';
 const SMTP_PASS = process.env.ALIYUN_MAIL_SMTP_PASS || process.env.SMTP_PASS || '';
-const FROM_EMAIL = (process.env.FROM_EMAIL || '订单通知 <orders@vivebio.cn>').trim();
+const FROM_EMAIL = (process.env.FROM_EMAIL || '订单通知 <order@vivebio.cn>').trim();
 const SALES_TO = (process.env.SALES_TO || 'sales@vivebio.cn').trim();
 
 const DEFAULT_ORIGINS = [
   'https://order.vivebio.cn',
+  'http://order.vivebio.cn',
   'https://shidimeng1983.github.io',
+  'http://shidimeng1983.github.io',
   'http://localhost:8080',
   'http://127.0.0.1:8080',
   'http://localhost:5500',
