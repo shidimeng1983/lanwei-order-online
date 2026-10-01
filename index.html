@@ -2237,7 +2237,6 @@
                 const discountAmount = catalogTotal * ((customerInfo.discount || 0) / 100);
                 const finalTotal = catalogTotal - discountAmount;
                 const label = customerInfo.promoLabel || `${customerInfo.discount}%`;
-                const codePart = customerInfo.promoCode ? ` · 码 ${customerInfo.promoCode}` : '';
                 lines.push(`优惠（${label}${codePart}）：- ¥${discountAmount.toFixed(2)}`);
                 lines.push(`折后金额：¥${finalTotal.toFixed(2)}`);
             }
@@ -2540,7 +2539,7 @@
                     本文件为订购确认文本；提交不等于自动成交，以双方确认后的订单为准。<br>
                     产品仅供科研使用（RUO），不用于临床诊断。
                 </div>
-                <h1 class="text-2xl font-bold text-center mb-6">订购确认合同</h1>
+                <h1 class="text-2xl font-bold text-center mb-6">订购合同</h1>
                 <div class="grid grid-cols-2 gap-x-8 gap-y-2 mb-6">
                     <div><strong>甲方:</strong> ${customerInfo.name}</div>
                     <div><strong>乙方:</strong> 览微生物科技（上海）有限公司</div>
