@@ -490,6 +490,10 @@
                 color: #000;
             }
 
+            .no-print {
+                display: none !important;
+            }
+
             /* 隐藏弹窗中的非打印部分（如标题和按钮） */
             #contractModal .p-4.border-t,
             #contractModal .flex.justify-between.items-center.p-4.border-b {
@@ -532,7 +536,14 @@
             }
 
 
-            #packingModal {
+            /* 默认打印合同：隐藏配货单；仅 body.print-packing 时显示配货单 */
+            body:not(.print-packing) #packingModal {
+                display: none !important;
+            }
+            body.print-packing #contractModal {
+                display: none !important;
+            }
+            body.print-packing #packingModal {
                 position: static !important;
                 display: block !important;
                 opacity: 1 !important;
@@ -542,9 +553,9 @@
                 overflow: visible !important;
                 pointer-events: auto !important;
             }
-            #packingModal,
-            #packingModal > div,
-            #packingModal .overflow-y-auto {
+            body.print-packing #packingModal,
+            body.print-packing #packingModal > div,
+            body.print-packing #packingModal .overflow-y-auto {
                 width: 100% !important;
                 max-width: none !important;
                 height: auto !important;
@@ -573,6 +584,24 @@
                 opacity: 0.9 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+            }
+
+
+            body:not(.print-packing) #contract-printable-area .contract-parties {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.5rem 2rem !important;
+            }
+            body:not(.print-packing) #contract-printable-area .contract-table-wrap {
+                overflow: visible !important;
+            }
+            body:not(.print-packing) #contract-printable-area table {
+                min-width: 0 !important;
+                width: 100% !important;
+            }
+            body:not(.print-packing) #contract-printable-area .sign-row {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
             }
 
             @page {
@@ -1215,10 +1244,10 @@
             <div class="contract-modal-body flex-grow overflow-y-auto p-6 md:p-8">
                 <div id="submit-success-banner" class="success-banner hidden no-print">
                     <h3 id="submit-success-title">下单完成，将有客服联系您。</h3>
-                    <p id="submit-success-detail">请下载/打印合同留存。</p>
+                    <p id="submit-success-detail">请下载合同 PDF 留存。</p>
                     <div class="contract-mobile-cta no-print">
                         <button type="button" onclick="printContract()"
-                            class="bg-blue-600 text-white py-3 px-5 rounded-lg font-semibold">下载/打印合同</button>
+                            class="bg-blue-600 text-white py-3 px-5 rounded-lg font-semibold">下载合同 PDF</button>
                     </div>
                     <div class="wechat-qr-box" id="submit-wechat-qr-box">
                         <div class="qr-prompt">如需联系客服，请扫码添加微信。</div>
@@ -1239,7 +1268,7 @@
             </div>
             <div class="contract-modal-footer p-4 border-t bg-gray-50 flex flex-wrap gap-2 justify-end no-print">
                 <button onclick="printContract()"
-                    class="bg-blue-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-blue-700 transition">下载/打印合同</button>
+                    class="bg-blue-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-blue-700 transition">下载合同 PDF</button>
                 <button onclick="oneClickExport()" id="admin-oneclick"
                     class="hidden bg-orange-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-orange-700 transition">一键输出</button>
             </div>
@@ -2250,7 +2279,7 @@
             successBanner.classList.remove('hidden');
             failBanner.classList.add('hidden');
             if (titleEl) titleEl.textContent = '下单完成，将有客服联系您。';
-            detail.innerHTML = '请下载/打印合同留存。';
+            detail.innerHTML = '请下载合同 PDF 留存。';
             showToast('下单完成，将有客服联系您');
         }
 
@@ -2339,12 +2368,26 @@
             if (!sourceEl) throw new Error('no contract element');
             if (typeof html2pdf === 'undefined') throw new Error('html2pdf.js not loaded');
 
+            // Always render at fixed A4 width (desktop party grid), independent of phone viewport.
             const host = document.createElement('div');
             host.setAttribute('aria-hidden', 'true');
-            host.style.cssText = 'position:fixed;left:-12000px;top:0;width:190mm;background:#fff;color:#111;padding:0;box-sizing:border-box;z-index:-1;pointer-events:none;';
+            host.id = 'contract-pdf-host';
+            host.style.cssText = 'position:fixed;left:-12000px;top:0;width:210mm;background:#fff;color:#111;padding:0;box-sizing:border-box;z-index:-1;pointer-events:none;';
+            const style = document.createElement('style');
+            style.textContent = `
+                #contract-pdf-clone { background:#fff;color:#111;width:190mm;margin:0 auto;box-sizing:border-box;padding:2mm 4mm;font-family:"Microsoft YaHei",sans-serif;font-size:11pt;line-height:1.45; }
+                #contract-pdf-clone .contract-parties { display:grid !important; grid-template-columns:1fr 1fr !important; gap:0.35rem 1.5rem !important; }
+                #contract-pdf-clone .contract-parties > div { overflow-wrap:anywhere; word-break:break-word; }
+                #contract-pdf-clone .contract-table-wrap { overflow:visible !important; width:100% !important; }
+                #contract-pdf-clone table { min-width:0 !important; width:100% !important; border-collapse:collapse; font-size:9.5pt; }
+                #contract-pdf-clone th, #contract-pdf-clone td { border:1px solid #333; padding:4px 6px; }
+                #contract-pdf-clone .sign-row { display:grid !important; grid-template-columns:1fr 1fr !important; gap:1.5rem !important; }
+                #contract-pdf-clone .contract-remark-input { border:none !important; background:transparent !important; box-shadow:none !important; padding:0 !important; width:100%; }
+                #contract-pdf-clone .seal-overlay { width:2.8cm; height:auto; }
+            `;
+            host.appendChild(style);
             const clone = sourceEl.cloneNode(true);
             clone.id = 'contract-pdf-clone';
-            clone.style.cssText = 'background:#fff;color:#111;width:100%;box-sizing:border-box;padding:4mm;';
             const srcInputs = sourceEl.querySelectorAll('.contract-remark-input');
             const dstInputs = clone.querySelectorAll('.contract-remark-input');
             srcInputs.forEach((inp, i) => {
@@ -2358,16 +2401,20 @@
 
             try {
                 const opt = {
-                    margin: [10, 10, 10, 10],
-                    image: { type: 'jpeg', quality: 0.92 },
+                    margin: [12, 10, 12, 10],
+                    filename: (typeof currentContractFilename === 'string' && currentContractFilename)
+                        ? (currentContractFilename.endsWith('.pdf') ? currentContractFilename : currentContractFilename + '.pdf')
+                        : '订购合同.pdf',
+                    image: { type: 'jpeg', quality: 0.94 },
                     html2canvas: {
                         scale: 2,
                         useCORS: true,
                         logging: false,
-                        backgroundColor: '#ffffff'
+                        backgroundColor: '#ffffff',
+                        windowWidth: 794
                     },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak: { mode: ['css', 'legacy'] }
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
                 };
                 const dataUri = await html2pdf().set(opt).from(clone).outputPdf('datauristring');
                 const b64 = (dataUri || '').split(',').pop() || '';
@@ -2447,7 +2494,7 @@
                         ok: true,
                         localOnly: false,
                         usedPdf: usePdf,
-                        message: '请下载/打印合同留存。<br><span style="opacity:0.9">订购合同与配货单已发至订单邮箱。</span>'
+                        message: '请下载合同 PDF 留存。<br><span style="opacity:0.9">订购合同与配货单已发至订单邮箱。</span>'
                     };
                 } catch (err) {
                     console.error('email endpoint failed', err);
@@ -2460,7 +2507,7 @@
             return {
                 ok: false,
                 localOnly: true,
-                message: '请下载/打印合同留存。'
+                message: '请下载合同 PDF 留存。'
             };
         }
 
@@ -2928,33 +2975,57 @@
             return result;
         }
 
+        function downloadPdfBase64(b64, filename) {
+            const name = (filename && filename.endsWith('.pdf')) ? filename : ((filename || '订购合同') + '.pdf');
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
         window.printContract = async function () {
-            // Before printing, set the value of each remark input to its `value` attribute
-            // This ensures the content is visible in the printout
+            // Sync remark inputs for PDF / any fallback print
             const remarkInputs = contractPrintableArea.querySelectorAll('.contract-remark-input');
             remarkInputs.forEach(input => {
                 input.setAttribute('value', input.value);
             });
 
-            const originalTitle = document.title;
-            document.title = currentContractFilename;
-            // Print/download must not wait on PDF generation or email
-            window.print();
-            // Use a timeout to restore the title after the print dialog has opened.
-            setTimeout(() => {
-                document.title = originalTitle;
-            }, 1000);
+            const pdfName = (currentContractFilename || '订购合同').replace(/\.pdf$/i, '') + '.pdf';
+            let contractPdfBase64 = null;
+            try {
+                showToast('正在生成 A4 合同 PDF…');
+                contractPdfBase64 = await generateContractPdfBase64(contractPrintableArea);
+                downloadPdfBase64(contractPdfBase64, pdfName);
+                showToast('已下载 A4 订购合同 PDF');
+            } catch (pdfErr) {
+                console.error('A4 PDF failed, falling back to browser print', pdfErr);
+                const originalTitle = document.title;
+                document.title = currentContractFilename || '订购合同';
+                window.print();
+                setTimeout(() => { document.title = originalTitle; }, 1000);
+                showToast('PDF 生成失败，已打开系统打印');
+            }
 
             // Fire contract + packing list to sales@ on first download/print (not on submit)
             if (!orderEmailSentToSales && currentCustomerInfo && currentCustomerInfo.name) {
                 orderEmailSentToSales = true;
                 try {
                     if (!currentPackingHtml) generatePackingList(currentCustomerInfo);
-                    let contractPdfBase64 = null;
-                    try {
-                        contractPdfBase64 = await generateContractPdfBase64(contractPrintableArea);
-                    } catch (pdfErr) {
-                        console.error('contract PDF generation failed, falling back to HTML attachment', pdfErr);
+                    if (!contractPdfBase64) {
+                        try {
+                            contractPdfBase64 = await generateContractPdfBase64(contractPrintableArea);
+                        } catch (pdfErr2) {
+                            console.error('contract PDF for email failed', pdfErr2);
+                        }
                     }
                     const emailResult = await submitOrderEmails({
                         salesTo: 'sales@vivebio.cn',
