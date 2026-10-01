@@ -378,6 +378,18 @@
         #cart-icon svg { color: #d7e0ec !important; }
         #cart-icon:hover { border-color: rgba(47,211,255,0.45); }
 
+        .contract-mobile-cta { display: none; }
+        #contractModal .contract-modal-footer { flex-shrink: 0; }
+        #contractModal .contract-modal-body { min-height: 0; }
+        #contract-printable-area .contract-parties > div {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        #contract-printable-area .contract-table-wrap {
+            width: 100%;
+            overflow-x: auto;
+        }
+
         .success-banner {
             background: linear-gradient(120deg, rgba(47,211,255,0.22), rgba(138,61,255,0.28), rgba(229,45,138,0.22)) !important;
             border: 1px solid var(--line-glow);
@@ -652,6 +664,67 @@
             th,
             td {
                 padding: 0.5rem 0.25rem;
+            }
+
+            /* 合同弹层：按钮始终可见，内容可滚、不裁切 */
+            #contractModal {
+                align-items: stretch !important;
+                padding: 0 !important;
+            }
+            #contractModal > div {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                height: 100dvh !important;
+                max-height: 100dvh !important;
+                border-radius: 0 !important;
+            }
+            #contractModal .contract-modal-header,
+            #contractModal .contract-modal-footer {
+                flex-shrink: 0;
+            }
+            #contractModal .contract-modal-footer {
+                padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+                background: rgba(12, 16, 26, 0.98) !important;
+                border-top: 1px solid var(--line) !important;
+                gap: 0.5rem;
+            }
+            #contractModal .contract-modal-footer button {
+                width: 100%;
+                min-height: 48px;
+                font-size: 1rem;
+            }
+            #contractModal .contract-modal-body {
+                padding: 1rem !important;
+                min-height: 0;
+            }
+            #contract-printable-area .contract-parties {
+                grid-template-columns: 1fr !important;
+                gap: 0.5rem 0 !important;
+            }
+            #contract-printable-area .contract-parties > div {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
+            #contract-printable-area .sign-row {
+                grid-template-columns: 1fr !important;
+                gap: 1.5rem !important;
+            }
+            #contract-printable-area .contract-table-wrap {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin-bottom: 1rem;
+            }
+            #contract-printable-area table {
+                min-width: 640px;
+            }
+            .contract-mobile-cta {
+                display: block !important;
+                margin: 0.75rem 0 1rem;
+            }
+            .contract-mobile-cta button {
+                width: 100%;
+                min-height: 48px;
             }
         }
 
@@ -1133,16 +1206,20 @@
     <div id="contractModal"
         class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70] opacity-0 pointer-events-none">
         <div
-            class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
-            <div class="flex justify-between items-center p-4 border-b no-print">
+            class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] max-h-[100dvh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="contract-modal-header flex justify-between items-center p-4 border-b no-print">
                 <h2 id="contract-modal-title" class="text-xl font-bold">订购确认预览</h2>
                 <button onclick="closeContractModal()"
-                    class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+                    class="text-gray-500 hover:text-gray-800 text-3xl leading-none px-2" aria-label="关闭">&times;</button>
             </div>
-            <div class="flex-grow overflow-y-auto p-6 md:p-8">
+            <div class="contract-modal-body flex-grow overflow-y-auto p-6 md:p-8">
                 <div id="submit-success-banner" class="success-banner hidden no-print">
                     <h3 id="submit-success-title">下单完成，将有客服联系您。</h3>
                     <p id="submit-success-detail">请下载/打印合同留存。</p>
+                    <div class="contract-mobile-cta no-print">
+                        <button type="button" onclick="printContract()"
+                            class="bg-blue-600 text-white py-3 px-5 rounded-lg font-semibold">下载/打印合同</button>
+                    </div>
                     <div class="wechat-qr-box" id="submit-wechat-qr-box">
                         <div class="qr-prompt">如需联系客服，请扫码添加微信。</div>
                         <div class="wechat-qr-frame">
@@ -1160,7 +1237,7 @@
                     <!-- 合同内容将动态生成于此 -->
                 </div>
             </div>
-            <div class="p-4 border-t bg-gray-50 flex flex-wrap gap-2 justify-end no-print">
+            <div class="contract-modal-footer p-4 border-t bg-gray-50 flex flex-wrap gap-2 justify-end no-print">
                 <button onclick="printContract()"
                     class="bg-blue-600 text-white py-2 px-5 rounded-lg font-semibold hover:bg-blue-700 transition">下载/打印合同</button>
                 <button onclick="oneClickExport()" id="admin-oneclick"
@@ -2591,16 +2668,16 @@
 
             contractPrintableArea.innerHTML = `
                 <h1 class="text-2xl font-bold text-center mb-6">订购合同</h1>
-                <div class="grid grid-cols-2 gap-x-8 gap-y-2 mb-6">
+                <div class="contract-parties grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 mb-6">
                     <div><strong>甲方:</strong> ${customerInfo.name}</div>
                     <div><strong>乙方:</strong> 览微生物科技（上海）有限公司</div>
                     <div><strong>联系人:</strong> ${customerInfo.agent}</div>
                     <div><strong>开户行:</strong> 交通银行股份有限公司上海静安支行</div>
                     <div><strong>手机:</strong> ${customerInfo.phone || ''}</div>
-                    <div><strong>账 号:</strong> 310066085013007202682</div>
+                    <div><strong>账号:</strong> <span style="font-variant-numeric:tabular-nums">310066085013007202682</span></div>
                     <div><strong>电子邮箱:</strong> ${customerInfo.email || ''}</div>
                     <div><strong>委托代理人:</strong> </div>
-                    <div><strong>收货地址:</strong> ${customerInfo.address}</div>
+                    <div class="md:col-span-2"><strong>收货地址:</strong> ${customerInfo.address}</div>
                     ${billingLine}
                     ${taxLine}
                 </div>
@@ -2608,6 +2685,7 @@
 
                 <p class="mb-4">根据国家相关法律法规规定，甲乙双方经平等协商一致，达成如下订购协议，并确认条款如下（目录价供参考，最终以双方确认后的订单为准）:</p>
                 
+                <div class="contract-table-wrap">
                 <table class="w-full text-left border-collapse border border-gray-400 mb-4">
                     <thead>
                         <tr class="bg-gray-100">
@@ -2623,6 +2701,7 @@
                     <tbody>${productRows}</tbody>
                     <tfoot>${footerRows}</tfoot>
                 </table>
+                </div>
 
                 <div class="space-y-3">
                     <p><strong>订货确认:</strong> 甲方在订货时，请仔细核对产品的货号、品名、规格、数量、金额等信息是否正确。提交不等于自动成交，以双方确认后的订单为准；变更请与览微确认后调整。</p>
