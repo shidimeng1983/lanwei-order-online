@@ -3,6 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -536,11 +538,16 @@
             }
 
 
-            /* 默认打印合同：隐藏配货单；仅 body.print-packing 时显示配货单 */
-            body:not(.print-packing) #packingModal {
+            /* 默认打印合同：彻底隐藏配货单；仅 body.print-packing 时显示配货单 */
+            body:not(.print-packing) #packingModal,
+            body:not(.print-packing) #packing-printable-area {
                 display: none !important;
+                visibility: hidden !important;
+                height: 0 !important;
+                overflow: hidden !important;
             }
-            body.print-packing #contractModal {
+            body.print-packing #contractModal,
+            body.print-packing #contract-printable-area {
                 display: none !important;
             }
             body.print-packing #packingModal {
@@ -571,8 +578,8 @@
             #packingModal .flex.justify-between.items-center.p-4.border-b {
                 display: none !important;
             }
-            #packing-printable-area {
-                display: block;
+            body.print-packing #packing-printable-area {
+                display: block !important;
                 font-size: 10pt;
                 color: #000;
             }
@@ -586,6 +593,15 @@
                 print-color-adjust: exact;
             }
 
+
+
+            body:not(.print-packing) #contractModal .contract-modal-header,
+            body:not(.print-packing) #contractModal .contract-modal-footer,
+            body:not(.print-packing) #submit-success-banner,
+            body:not(.print-packing) #submit-fail-banner,
+            body:not(.print-packing) .contract-mobile-cta {
+                display: none !important;
+            }
 
             body:not(.print-packing) #contract-printable-area .contract-parties {
                 display: grid !important;
@@ -1245,6 +1261,7 @@
                 <div id="submit-success-banner" class="success-banner hidden no-print">
                     <h3 id="submit-success-title">下单完成，将有客服联系您。</h3>
                     <p id="submit-success-detail">请下载合同 PDF 留存。</p>
+                    <p class="text-xs opacity-70 mt-1 no-print" data-build="20261001-a4">版式：A4 PDF · build 1001c（若仍见「下载/打印合同」请强刷）</p>
                     <div class="contract-mobile-cta no-print">
                         <button type="button" onclick="printContract()"
                             class="bg-blue-600 text-white py-3 px-5 rounded-lg font-semibold">下载合同 PDF</button>
@@ -2975,6 +2992,13 @@
             return result;
         }
 
+        function isTouchOrIOS() {
+            const ua = navigator.userAgent || '';
+            const iOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            const narrow = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+            return iOS || narrow;
+        }
+
         function downloadPdfBase64(b64, filename) {
             const name = (filename && filename.endsWith('.pdf')) ? filename : ((filename || '订购合同') + '.pdf');
             const bin = atob(b64);
@@ -2982,6 +3006,19 @@
             for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
             const blob = new Blob([bytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
+
+            // iOS Safari often ignores <a download>; open PDF in a new tab so user can Share → 存储到文件.
+            if (isTouchOrIOS()) {
+                const opened = window.open(url, '_blank');
+                if (!opened) {
+                    // Popup blocked: same-tab navigate to the PDF blob
+                    window.location.href = url;
+                } else {
+                    setTimeout(() => URL.revokeObjectURL(url), 60000);
+                }
+                return { mode: 'open-tab', url };
+            }
+
             const a = document.createElement('a');
             a.href = url;
             a.download = name;
@@ -2990,32 +3027,44 @@
             a.click();
             document.body.removeChild(a);
             setTimeout(() => URL.revokeObjectURL(url), 2000);
+            return { mode: 'download', url };
         }
 
         window.printContract = async function () {
-            // Sync remark inputs for PDF / any fallback print
             const remarkInputs = contractPrintableArea.querySelectorAll('.contract-remark-input');
             remarkInputs.forEach(input => {
                 input.setAttribute('value', input.value);
             });
+
+            // Never leave packing modal visible for contract export
+            if (packingModal) {
+                packingModal.classList.add('opacity-0', 'pointer-events-none');
+                document.body.classList.remove('print-packing');
+            }
 
             const pdfName = (currentContractFilename || '订购合同').replace(/\.pdf$/i, '') + '.pdf';
             let contractPdfBase64 = null;
             try {
                 showToast('正在生成 A4 合同 PDF…');
                 contractPdfBase64 = await generateContractPdfBase64(contractPrintableArea);
-                downloadPdfBase64(contractPdfBase64, pdfName);
-                showToast('已下载 A4 订购合同 PDF');
+                const how = downloadPdfBase64(contractPdfBase64, pdfName);
+                showToast(how.mode === 'open-tab'
+                    ? '已打开 A4 合同 PDF，可用分享保存到文件'
+                    : '已下载 A4 订购合同 PDF');
             } catch (pdfErr) {
-                console.error('A4 PDF failed, falling back to browser print', pdfErr);
-                const originalTitle = document.title;
-                document.title = currentContractFilename || '订购合同';
-                window.print();
-                setTimeout(() => { document.title = originalTitle; }, 1000);
-                showToast('PDF 生成失败，已打开系统打印');
+                console.error('A4 PDF failed', pdfErr);
+                // Do NOT fall back to window.print on phones — that produces the broken layout.
+                if (isTouchOrIOS()) {
+                    showToast('PDF 生成失败，请换电脑打开订单页下载，或稍后重试');
+                } else {
+                    const originalTitle = document.title;
+                    document.title = currentContractFilename || '订购合同';
+                    window.print();
+                    setTimeout(() => { document.title = originalTitle; }, 1000);
+                    showToast('PDF 生成失败，已打开系统打印');
+                }
             }
 
-            // Fire contract + packing list to sales@ on first download/print (not on submit)
             if (!orderEmailSentToSales && currentCustomerInfo && currentCustomerInfo.name) {
                 orderEmailSentToSales = true;
                 try {
@@ -3041,7 +3090,7 @@
                     }
                 } catch (err) {
                     console.error('sales email on print failed', err);
-                    orderEmailSentToSales = false; // allow retry
+                    orderEmailSentToSales = false;
                 }
             }
         }
