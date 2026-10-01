@@ -672,6 +672,35 @@
                 max-height: 90vh;
             }
 
+            /* 订购信息：贴满可视区，底部「提交订单」不被 Safari 底栏裁切 */
+            #customerInfoModal {
+                align-items: stretch !important;
+                padding: 0 !important;
+            }
+            #customerInfoModal > div {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                height: 100dvh !important;
+                max-height: 100dvh !important;
+                border-radius: 0 !important;
+            }
+            #customerInfoModal .customer-modal-footer {
+                flex-shrink: 0;
+                padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important;
+                background: rgba(12, 16, 26, 0.98) !important;
+                border-top: 1px solid var(--line) !important;
+            }
+            #customerInfoModal .customer-modal-footer button {
+                width: 100%;
+                min-height: 48px;
+                font-size: 1rem;
+            }
+            #customerInfoModal .customer-modal-body {
+                min-height: 0;
+                padding: 1rem !important;
+            }
+
             /* 筛选按钮在移动端的换行优化 */
             #filter-buttons {
                 gap: 0.5rem;
@@ -1139,7 +1168,7 @@
                 <button class="text-gray-500 hover:text-gray-800 text-3xl"
                     onclick="closeCustomerInfoModal()">&times;</button>
             </div>
-            <div class="flex-grow overflow-y-auto p-6">
+            <div class="customer-modal-body flex-grow overflow-y-auto p-6">
                 <div class="mb-4 hidden" id="history-section">
                     <label for="customer-history" class="block text-sm font-medium text-gray-700 mb-1">选择历史记录</label>
                     <div class="flex gap-2">
@@ -1220,7 +1249,7 @@
                     </div>
                 </form>
             </div>
-            <div class="p-5 border-t bg-gray-50 text-right flex-shrink-0">
+            <div class="customer-modal-footer p-5 border-t bg-gray-50 text-right flex-shrink-0">
                 <button onclick="submitCustomerInfo()"
                     class="bg-green-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-green-700 transition">提交订单</button>
             </div>
@@ -1261,7 +1290,7 @@
                 <div id="submit-success-banner" class="success-banner hidden no-print">
                     <h3 id="submit-success-title">下单完成，将有客服联系您。</h3>
                     <p id="submit-success-detail">请下载合同 PDF 留存。</p>
-                    <p class="text-xs opacity-70 mt-1 no-print" data-build="20261001-a4">版式：A4 PDF · build 1001c（若仍见「下载/打印合同」请强刷）</p>
+                    <p class="text-xs opacity-70 mt-1 no-print" data-build="20261001-e">版式：A4 PDF · build 1001e（若仍见顶部大空白请强刷）</p>
                     <div class="contract-mobile-cta no-print">
                         <button type="button" onclick="printContract()"
                             class="bg-blue-600 text-white py-3 px-5 rounded-lg font-semibold">下载合同 PDF</button>
@@ -2379,59 +2408,125 @@
 
         /**
          * Render #contract-printable-area (with seal) to portrait A4 PDF base64.
-         * Uses off-screen clone so print/download UI is not blocked or flickered.
+         *
+         * Top-gap root cause (phone Safari / WebKit):
+         * - Off-screen host (left:-12000px) makes html2canvas paint with a large
+         *   vertical offset → ~40% blank top, content mid-page, bottom clipped on 1/1.
+         * - pagebreak "avoid-all" on tall contracts worsens leading gap / single page.
+         * - max-width:100vw on a 210mm host while windowWidth=794 skews metrics on
+         *   narrow phones.
+         *
+         * Fix: in-viewport fixed 794px host (behind UI), force #111 on white, no
+         * avoid-all, allow css/legacy multi-page.
          */
         async function generateContractPdfBase64(sourceEl) {
             if (!sourceEl) throw new Error('no contract element');
             if (typeof html2pdf === 'undefined') throw new Error('html2pdf.js not loaded');
 
-            // Always render at fixed A4 width (desktop party grid), independent of phone viewport.
             const host = document.createElement('div');
             host.setAttribute('aria-hidden', 'true');
             host.id = 'contract-pdf-host';
-            host.style.cssText = 'position:fixed;left:-12000px;top:0;width:210mm;background:#fff;color:#111;padding:0;box-sizing:border-box;z-index:-1;pointer-events:none;';
+            host.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;color:#111;padding:0;margin:0;box-sizing:border-box;z-index:-1;pointer-events:none;overflow:visible;opacity:1;';
+
             const style = document.createElement('style');
-            style.textContent = `
-                #contract-pdf-clone { background:#fff;color:#111;width:190mm;margin:0 auto;box-sizing:border-box;padding:2mm 4mm;font-family:"Microsoft YaHei",sans-serif;font-size:11pt;line-height:1.45; }
-                #contract-pdf-clone .contract-parties { display:grid !important; grid-template-columns:1fr 1fr !important; gap:0.35rem 1.5rem !important; }
-                #contract-pdf-clone .contract-parties > div { overflow-wrap:anywhere; word-break:break-word; }
-                #contract-pdf-clone .contract-table-wrap { overflow:visible !important; width:100% !important; }
-                #contract-pdf-clone table { min-width:0 !important; width:100% !important; border-collapse:collapse; font-size:9.5pt; }
-                #contract-pdf-clone th, #contract-pdf-clone td { border:1px solid #333; padding:4px 6px; }
-                #contract-pdf-clone .sign-row { display:grid !important; grid-template-columns:1fr 1fr !important; gap:1.5rem !important; }
-                #contract-pdf-clone .contract-remark-input { border:none !important; background:transparent !important; box-shadow:none !important; padding:0 !important; width:100%; }
-                #contract-pdf-clone .seal-overlay { width:2.8cm; height:auto; }
-            `;
+            style.textContent = ''
+                + '#contract-pdf-clone{background:#fff!important;color:#111!important;width:754px;max-width:754px;margin:0!important;padding:0!important;box-sizing:border-box;font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-size:10.5pt;line-height:1.4;position:relative;left:0;top:0;transform:none!important;}'
+                + '#contract-pdf-clone *{color:#111!important;}'
+                + '#contract-pdf-clone .contract-parties{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.35rem 1.25rem!important;}'
+                + '#contract-pdf-clone .contract-parties>div{overflow-wrap:anywhere;word-break:break-word;}'
+                + '#contract-pdf-clone .contract-table-wrap{overflow:visible!important;width:100%!important;}'
+                + '#contract-pdf-clone table{min-width:0!important;width:100%!important;border-collapse:collapse;font-size:9pt;table-layout:fixed;}'
+                + '#contract-pdf-clone th,#contract-pdf-clone td{border:1px solid #333!important;padding:3px 5px;background:#fff!important;color:#111!important;word-break:break-word;overflow-wrap:anywhere;}'
+                + '#contract-pdf-clone thead tr,#contract-pdf-clone thead th{background:#f3f4f6!important;}'
+                + '#contract-pdf-clone .sign-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:1.25rem!important;}'
+                + '#contract-pdf-clone .contract-remark-input{border:none!important;background:transparent!important;box-shadow:none!important;padding:0!important;width:100%;color:#111!important;}'
+                + '#contract-pdf-clone .seal-overlay{width:2.8cm;height:auto;}'
+                + '#contract-pdf-clone .contract-banner{color:#4c1d95!important;}'
+                + '#contract-pdf-clone h1{margin:0 0 0.75rem!important;padding:0!important;text-align:center;color:#111!important;}'
+                + '#contract-pdf-clone .sign-block{position:relative;min-height:3.2cm;}';
             host.appendChild(style);
+
             const clone = sourceEl.cloneNode(true);
             clone.id = 'contract-pdf-clone';
+            clone.className = '';
+            clone.style.cssText = 'background:#fff;color:#111;margin:0;padding:0;position:relative;left:0;top:0;transform:none;width:754px;';
+
             const srcInputs = sourceEl.querySelectorAll('.contract-remark-input');
             const dstInputs = clone.querySelectorAll('.contract-remark-input');
             srcInputs.forEach((inp, i) => {
-                if (dstInputs[i]) {
-                    dstInputs[i].setAttribute('value', inp.value);
-                    dstInputs[i].value = inp.value;
-                }
+                if (!dstInputs[i]) return;
+                const v = inp.value;
+                const span = document.createElement('span');
+                span.textContent = v || '';
+                span.style.cssText = 'color:#111;white-space:pre-wrap;';
+                dstInputs[i].replaceWith(span);
             });
+
+            // Strip light-theme utility classes that can win over inherited color in canvas.
+            clone.querySelectorAll('*').forEach((el) => {
+                el.style.color = '#111';
+                if (el.style && el.style.webkitTextFillColor) el.style.webkitTextFillColor = '#111';
+                el.classList.remove('text-gray-100', 'text-gray-200', 'text-gray-300', 'text-white', 'text-gray-400', 'text-gray-500', 'text-gray-600');
+            });
+
             host.appendChild(clone);
             document.body.appendChild(host);
 
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            const imgs = Array.from(clone.querySelectorAll('img'));
+            await Promise.all(imgs.map((img) => {
+                if (img.complete && img.naturalWidth) return Promise.resolve();
+                return new Promise((res) => {
+                    const done = () => res();
+                    img.addEventListener('load', done, { once: true });
+                    img.addEventListener('error', done, { once: true });
+                    setTimeout(done, 2500);
+                });
+            }));
+
             try {
                 const opt = {
-                    margin: [12, 10, 12, 10],
+                    margin: [10, 10, 10, 10],
                     filename: (typeof currentContractFilename === 'string' && currentContractFilename)
                         ? (currentContractFilename.endsWith('.pdf') ? currentContractFilename : currentContractFilename + '.pdf')
                         : '订购合同.pdf',
-                    image: { type: 'jpeg', quality: 0.94 },
+                    image: { type: 'jpeg', quality: 0.95 },
                     html2canvas: {
                         scale: 2,
                         useCORS: true,
+                        allowTaint: true,
                         logging: false,
                         backgroundColor: '#ffffff',
-                        windowWidth: 794
+                        windowWidth: 794,
+                        scrollX: 0,
+                        scrollY: 0,
+                        x: 0,
+                        y: 0,
+                        onclone: function (doc) {
+                            const c = doc.getElementById('contract-pdf-clone');
+                            const h = doc.getElementById('contract-pdf-host');
+                            if (h) {
+                                h.style.left = '0';
+                                h.style.top = '0';
+                                h.style.opacity = '1';
+                                h.style.transform = 'none';
+                                h.style.width = '794px';
+                            }
+                            if (c) {
+                                c.style.left = '0';
+                                c.style.top = '0';
+                                c.style.margin = '0';
+                                c.style.padding = '0';
+                                c.style.transform = 'none';
+                                c.style.opacity = '1';
+                                c.style.color = '#111';
+                                c.style.background = '#fff';
+                                c.querySelectorAll('*').forEach((el) => { el.style.color = '#111'; });
+                            }
+                        }
                     },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                    pagebreak: { mode: ['css', 'legacy'] }
                 };
                 const dataUri = await html2pdf().set(opt).from(clone).outputPdf('datauristring');
                 const b64 = (dataUri || '').split(',').pop() || '';
