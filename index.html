@@ -2507,10 +2507,9 @@
                     const asPct = Math.round((1 - (customerInfo.discount || 0) / 100) * 100);
                     return (asPct % 10 === 0) ? `${asPct / 10}折` : `${asPct}折`;
                 })();
-                const codePart = customerInfo.promoCode ? ` · 码 ${customerInfo.promoCode}` : '';
                 footerRows += `
                     <tr class="font-bold">
-                       <td colspan="6" class="p-2 text-right">优惠（${promoLabel}${codePart}）</td>
+                       <td colspan="6" class="p-2 text-right">优惠（${promoLabel}）</td>
                        <td class="p-2 text-right text-red-500">- ¥${discountAmount.toFixed(2)}</td>
                     </tr>
                     <tr class="font-bold">
