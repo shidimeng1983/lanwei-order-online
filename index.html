@@ -1290,7 +1290,7 @@
                 <div id="submit-success-banner" class="success-banner hidden no-print">
                     <h3 id="submit-success-title">下单完成，将有客服联系您。</h3>
                     <p id="submit-success-detail">请下载合同 PDF 留存。</p>
-                    <p class="text-xs opacity-70 mt-1 no-print" data-build="20261001-e">版式：A4 PDF · build 1001e（若仍见顶部大空白请强刷）</p>
+                    <p class="text-xs opacity-70 mt-1 no-print" data-build="20261001-f">版式：A4 PDF · build 1001f（左右边距已校正，强刷后验证）</p>
                     <div class="contract-mobile-cta no-print">
                         <button type="button" onclick="printContract()"
                             class="bg-blue-600 text-white py-3 px-5 rounded-lg font-semibold">下载合同 PDF</button>
@@ -2409,15 +2409,18 @@
         /**
          * Render #contract-printable-area (with seal) to portrait A4 PDF base64.
          *
-         * Top-gap root cause (phone Safari / WebKit):
-         * - Off-screen host (left:-12000px) makes html2canvas paint with a large
-         *   vertical offset → ~40% blank top, content mid-page, bottom clipped on 1/1.
-         * - pagebreak "avoid-all" on tall contracts worsens leading gap / single page.
-         * - max-width:100vw on a 210mm host while windowWidth=794 skews metrics on
-         *   narrow phones.
+         * Top-gap root cause (phone Safari / WebKit) — fixed in 1001e:
+         * - Off-screen host (left:-12000px) made html2canvas paint with a large
+         *   vertical offset → blank top / content mid-page.
+         * Fix kept: in-viewport fixed 794px host (behind UI), no pagebreak avoid-all.
          *
-         * Fix: in-viewport fixed 794px host (behind UI), force #111 on white, no
-         * avoid-all, allow css/legacy multi-page.
+         * Horizontal shift root cause (1001e → flush-right) — fixed in 1001f:
+         * - html2canvas `windowWidth:794` + clone width 754px + forced scrollX/Y/x/y
+         *   skewed metrics vs phone viewport → ~10mm extra left whitespace, right
+         *   edge of parties/table/seal tight or clipped (ink L≈20mm R≈10mm).
+         * Fix: capture clone at full 794px (match host), do NOT set windowWidth /
+         *   scrollX/Y/x/y; let jsPDF margins [12,14,12,14] (~12–15mm) provide
+         *   balanced page margins. html2pdf margin order is [top,left,bottom,right].
          */
         async function generateContractPdfBase64(sourceEl) {
             if (!sourceEl) throw new Error('no contract element');
@@ -2426,11 +2429,12 @@
             const host = document.createElement('div');
             host.setAttribute('aria-hidden', 'true');
             host.id = 'contract-pdf-host';
+            // A4 @ 96dpi ≈ 794px; keep in-viewport (top-gap fix). z-index:-1 behind UI.
             host.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#fff;color:#111;padding:0;margin:0;box-sizing:border-box;z-index:-1;pointer-events:none;overflow:visible;opacity:1;';
 
             const style = document.createElement('style');
             style.textContent = ''
-                + '#contract-pdf-clone{background:#fff!important;color:#111!important;width:754px;max-width:754px;margin:0!important;padding:0!important;box-sizing:border-box;font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-size:10.5pt;line-height:1.4;position:relative;left:0;top:0;transform:none!important;}'
+                + '#contract-pdf-clone{background:#fff!important;color:#111!important;width:794px;max-width:794px;margin:0!important;padding:0!important;box-sizing:border-box;font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-size:10.5pt;line-height:1.4;position:relative;left:0;top:0;transform:none!important;}'
                 + '#contract-pdf-clone *{color:#111!important;}'
                 + '#contract-pdf-clone .contract-parties{display:grid!important;grid-template-columns:1fr 1fr!important;gap:0.35rem 1.25rem!important;}'
                 + '#contract-pdf-clone .contract-parties>div{overflow-wrap:anywhere;word-break:break-word;}'
@@ -2449,7 +2453,7 @@
             const clone = sourceEl.cloneNode(true);
             clone.id = 'contract-pdf-clone';
             clone.className = '';
-            clone.style.cssText = 'background:#fff;color:#111;margin:0;padding:0;position:relative;left:0;top:0;transform:none;width:754px;';
+            clone.style.cssText = 'background:#fff;color:#111;margin:0;padding:0;position:relative;left:0;top:0;transform:none;width:794px;';
 
             const srcInputs = sourceEl.querySelectorAll('.contract-remark-input');
             const dstInputs = clone.querySelectorAll('.contract-remark-input');
@@ -2486,7 +2490,8 @@
 
             try {
                 const opt = {
-                    margin: [10, 10, 10, 10],
+                    // html2pdf margin = [top, left, bottom, right] (not CSS order)
+                    margin: [12, 14, 12, 14],
                     filename: (typeof currentContractFilename === 'string' && currentContractFilename)
                         ? (currentContractFilename.endsWith('.pdf') ? currentContractFilename : currentContractFilename + '.pdf')
                         : '订购合同.pdf',
@@ -2497,11 +2502,9 @@
                         allowTaint: true,
                         logging: false,
                         backgroundColor: '#ffffff',
-                        windowWidth: 794,
-                        scrollX: 0,
-                        scrollY: 0,
-                        x: 0,
-                        y: 0,
+                        // Intentionally omit windowWidth / scrollX / scrollY / x / y:
+                        // forcing windowWidth:794 with a narrower phone viewport skewed
+                        // the canvas (~10mm left bias, right edge flush).
                         onclone: function (doc) {
                             const c = doc.getElementById('contract-pdf-clone');
                             const h = doc.getElementById('contract-pdf-host');
@@ -2518,6 +2521,8 @@
                                 c.style.margin = '0';
                                 c.style.padding = '0';
                                 c.style.transform = 'none';
+                                c.style.width = '794px';
+                                c.style.maxWidth = '794px';
                                 c.style.opacity = '1';
                                 c.style.color = '#111';
                                 c.style.background = '#fff';
