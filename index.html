@@ -348,6 +348,9 @@
         #customerInfoModal textarea::placeholder {
             color: #6f7f94 !important;
         }
+        #promo-status.promo-ok { color: #34d399 !important; }
+        #promo-status.promo-err { color: #f87171 !important; }
+        #promo-code { letter-spacing: 0.08em; }
         #cart-total { color: #ff8ec8 !important; }
         #modal-detail-components { color: #d7e0ec !important; }
 
@@ -1055,6 +1058,18 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1" for="customer-notes">备注（选填）</label>
                         <textarea id="customer-notes" placeholder="其它说明" class="w-full p-2 border rounded" rows="2"></textarea>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1" for="promo-code">优惠码</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="promo-code" maxlength="8" autocomplete="off" spellcheck="false"
+                                placeholder="请输入8位优惠码" class="w-full p-2 border rounded uppercase tracking-wider"
+                                style="text-transform: uppercase;">
+                            <button type="button" id="promo-apply"
+                                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition whitespace-nowrap">验证</button>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-1">选填；填写有效优惠码后显示折后合计。最终价格以双方确认为准。</p>
+                        <p id="promo-status" class="text-sm mt-1 min-h-[1.25rem]" aria-live="polite"></p>
+                    </div>
                     <!-- 兼容旧逻辑的隐藏字段 -->
                     <input type="hidden" id="customer-discount" value="0">
                     <input type="hidden" id="recipient-name" value="">
@@ -1233,6 +1248,113 @@
         let currentContractFilename = '';
         let selectedDyes = []; // 存储已选择的荧光染料 (Legacy)
         let pendingProduct = null; // 待加入购物车的CRT产品
+
+        // --- PROMO CODES (internal; case-insensitive match, store uppercase) ---
+        const PROMO_CODES = {
+            "8Y3JDBLN": { rate: 0.95, label: "95折" },
+            "SRJTBW7H": { rate: 0.95, label: "95折" },
+            "GBEUENX9": { rate: 0.95, label: "95折" },
+            "4UXMERYE": { rate: 0.95, label: "95折" },
+            "3YL56Z5C": { rate: 0.95, label: "95折" },
+            "TCHL3K22": { rate: 0.9, label: "9折" },
+            "A3GSARNX": { rate: 0.9, label: "9折" },
+            "VBGV73QP": { rate: 0.9, label: "9折" },
+            "ZWTUCUHJ": { rate: 0.9, label: "9折" },
+            "X48BE3V2": { rate: 0.9, label: "9折" },
+            "XKPWR4BR": { rate: 0.85, label: "85折" },
+            "C37FHDCN": { rate: 0.85, label: "85折" },
+            "P7WQUXJ8": { rate: 0.85, label: "85折" },
+            "BD2ZDQP4": { rate: 0.85, label: "85折" },
+            "B3ABY23X": { rate: 0.85, label: "85折" },
+            "MJCQJ4ST": { rate: 0.8, label: "8折" },
+            "RSAY8E3N": { rate: 0.8, label: "8折" },
+            "KTNTUR3A": { rate: 0.8, label: "8折" },
+            "C6KSPXZD": { rate: 0.8, label: "8折" },
+            "CZ3G3P48": { rate: 0.8, label: "8折" },
+            "B86DSWPU": { rate: 0.75, label: "75折" },
+            "YS97XRV8": { rate: 0.75, label: "75折" },
+            "7RQ2MVEM": { rate: 0.75, label: "75折" },
+            "7Q3HEEUX": { rate: 0.75, label: "75折" },
+            "ZZR472CD": { rate: 0.75, label: "75折" },
+            "XC9BNSJU": { rate: 0.7, label: "7折" },
+            "6C6PF65H": { rate: 0.7, label: "7折" },
+            "JXEFTAUY": { rate: 0.7, label: "7折" },
+            "BEMY56EX": { rate: 0.7, label: "7折" },
+            "3923HK8Z": { rate: 0.7, label: "7折" },
+            "GECBFJDG": { rate: 0.6, label: "6折" },
+            "UXDHCZNH": { rate: 0.6, label: "6折" },
+            "7UPTA8XS": { rate: 0.6, label: "6折" },
+            "YKQJCHYG": { rate: 0.6, label: "6折" },
+            "J6ZXDTM8": { rate: 0.6, label: "6折" },
+            "8XYWAPVK": { rate: 0.5, label: "5折" },
+            "AMUM4DLA": { rate: 0.5, label: "5折" },
+            "TBEAA62F": { rate: 0.5, label: "5折" },
+            "W2TXBTFR": { rate: 0.5, label: "5折" },
+            "4D95DX2Z": { rate: 0.5, label: "5折" },
+            "BLVRFESE": { rate: 0.4, label: "4折" },
+            "XKDJLNQB": { rate: 0.4, label: "4折" },
+            "P7M97CX6": { rate: 0.4, label: "4折" },
+            "E32YFGAN": { rate: 0.4, label: "4折" },
+            "M8HDQGQH": { rate: 0.4, label: "4折" }
+        };
+
+        function resolvePromo(raw) {
+            const code = String(raw || '').trim().toUpperCase();
+            if (!code) return { ok: false, empty: true, rate: 1, label: '', percentOff: 0, code: '' };
+            const entry = PROMO_CODES[code];
+            if (!entry) return { ok: false, empty: false, rate: 1, label: '', percentOff: 0, code };
+            const percentOff = Math.round((1 - entry.rate) * 100);
+            return { ok: true, empty: false, rate: entry.rate, label: entry.label, percentOff, code };
+        }
+
+        function clearPromoStatus() {
+            const status = document.getElementById('promo-status');
+            if (!status) return;
+            status.textContent = '';
+            status.classList.remove('promo-ok', 'promo-err');
+        }
+
+        function applyPromoToForm(options) {
+            const opts = options || {};
+            const input = document.getElementById('promo-code');
+            const discountEl = document.getElementById('customer-discount');
+            const status = document.getElementById('promo-status');
+            if (!input || !discountEl || !status) return resolvePromo('');
+            // Keep stored/displayed value uppercase
+            const caret = input.selectionStart;
+            const upper = String(input.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+            if (input.value !== upper) {
+                input.value = upper;
+                try { input.setSelectionRange(caret, caret); } catch (e) {}
+            }
+            const resolved = resolvePromo(input.value);
+            if (resolved.empty) {
+                discountEl.value = '0';
+                clearPromoStatus();
+                return resolved;
+            }
+            if (!resolved.ok) {
+                discountEl.value = '0';
+                status.textContent = '优惠码无效';
+                status.classList.remove('promo-ok');
+                status.classList.add('promo-err');
+                if (opts.toastOnInvalid) showToast('优惠码无效，请核对后重试');
+                return resolved;
+            }
+            discountEl.value = String(resolved.percentOff);
+            status.textContent = '已应用：' + resolved.label;
+            status.classList.remove('promo-err');
+            status.classList.add('promo-ok');
+            return resolved;
+        }
+
+        function resetPromoField() {
+            const input = document.getElementById('promo-code');
+            const discountEl = document.getElementById('customer-discount');
+            if (input) input.value = '';
+            if (discountEl) discountEl.value = '0';
+            clearPromoStatus();
+        }
 
         const subCodeMap = {
             'FRT000205T': ['FRT000205T-A', 'FRT000205T-B', 'FRT000205T-C', 'FRT000205T-D', 'FRT000205T-E', 'FRT000205T-F', 'FRT000205T-G', 'FRT000205T-H', 'FRT000205T-I', 'FRT000205T-J', 'FRT000205T-K', 'FRT000205T-L', 'FRT000205T-M'],
@@ -1535,6 +1657,27 @@
         const customerHistorySelect = document.getElementById('customer-history');
         const deleteHistoryBtn = document.getElementById('delete-history-btn');
         const customerForm = document.getElementById('customer-form');
+        const promoCodeInput = document.getElementById('promo-code');
+        const promoApplyBtn = document.getElementById('promo-apply');
+        if (promoCodeInput) {
+            promoCodeInput.addEventListener('input', function () {
+                applyPromoToForm();
+            });
+            promoCodeInput.addEventListener('blur', function () {
+                applyPromoToForm();
+            });
+            promoCodeInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyPromoToForm({ toastOnInvalid: true });
+                }
+            });
+        }
+        if (promoApplyBtn) {
+            promoApplyBtn.addEventListener('click', function () {
+                applyPromoToForm({ toastOnInvalid: true });
+            });
+        }
         const productDetailModal = document.getElementById('productDetailModal');
         const modalDetailTitle = document.getElementById('modal-detail-title');
         const modalDetailSpecPrice = document.getElementById('modal-detail-spec-price');
@@ -1980,6 +2123,13 @@
                 return;
             }
 
+            const promoResolved = applyPromoToForm({ toastOnInvalid: true });
+            if (!promoResolved.empty && !promoResolved.ok) {
+                document.getElementById('promo-code').focus();
+                return;
+            }
+            const percentOff = promoResolved.ok ? promoResolved.percentOff : 0;
+
             currentCustomerInfo = {
                 name: document.getElementById('customer-name').value.trim(),
                 agent: document.getElementById('customer-agent').value.trim(),
@@ -1989,7 +2139,9 @@
                 billing: document.getElementById('customer-billing').value.trim(),
                 taxId: document.getElementById('customer-taxid').value.trim(),
                 notes: document.getElementById('customer-notes').value.trim(),
-                discount: 0,
+                discount: percentOff,
+                promoCode: promoResolved.ok ? promoResolved.code : '',
+                promoLabel: promoResolved.ok ? promoResolved.label : '',
                 recipientName: document.getElementById('customer-agent').value.trim(),
                 recipientPhone: phone,
                 recipientAddress: document.getElementById('customer-address').value.trim(),
@@ -2067,13 +2219,28 @@
                 customerInfo.billing ? `发票抬头：${customerInfo.billing}` : '',
                 customerInfo.taxId ? `税号：${customerInfo.taxId}` : '',
                 customerInfo.notes ? `备注：${customerInfo.notes}` : '',
+                (customerInfo.discount > 0 && customerInfo.promoCode)
+                    ? `优惠码：${customerInfo.promoCode}（${customerInfo.promoLabel || (customerInfo.discount + '% off')}）`
+                    : '',
                 '',
                 '明细：'
             ].filter(Boolean);
+            let catalogTotal = 0;
             cart.forEach(item => {
                 const sku = item.subCode || item.catalog;
+                const line = (Number(item.price) || 0) * (Number(item.quantity) || 0);
+                catalogTotal += line;
                 lines.push(`- ${sku} | ${item.name} | ${item.spec} | x${item.quantity}`);
             });
+            lines.push('', `目录价（商品总计）：¥${catalogTotal.toFixed(2)}`);
+            if (customerInfo.discount > 0) {
+                const discountAmount = catalogTotal * ((customerInfo.discount || 0) / 100);
+                const finalTotal = catalogTotal - discountAmount;
+                const label = customerInfo.promoLabel || `${customerInfo.discount}%`;
+                const codePart = customerInfo.promoCode ? ` · 码 ${customerInfo.promoCode}` : '';
+                lines.push(`优惠（${label}${codePart}）：- ¥${discountAmount.toFixed(2)}`);
+                lines.push(`折后金额：¥${finalTotal.toFixed(2)}`);
+            }
             lines.push('', `日期：${d.dateIso}`, '产品仅供科研使用（RUO）。');
             return lines.join('\n');
         }
@@ -2332,18 +2499,23 @@
 
             let footerRows = `
                 <tr class="font-bold">
-                   <td colspan="6" class="p-2 text-right">商品总计</td>
+                   <td colspan="6" class="p-2 text-right">目录价（商品总计）</td>
                    <td class="p-2 text-right">¥${total.toFixed(2)}</td>
                 </tr>
             `;
             if (customerInfo.discount > 0) {
+                const promoLabel = customerInfo.promoLabel || (() => {
+                    const asPct = Math.round((1 - (customerInfo.discount || 0) / 100) * 100);
+                    return (asPct % 10 === 0) ? `${asPct / 10}折` : `${asPct}折`;
+                })();
+                const codePart = customerInfo.promoCode ? ` · 码 ${customerInfo.promoCode}` : '';
                 footerRows += `
                     <tr class="font-bold">
-                       <td colspan="6" class="p-2 text-right">折扣 (${customerInfo.discount}%)</td>
+                       <td colspan="6" class="p-2 text-right">优惠（${promoLabel}${codePart}）</td>
                        <td class="p-2 text-right text-red-500">- ¥${discountAmount.toFixed(2)}</td>
                     </tr>
                     <tr class="font-bold">
-                       <td colspan="6" class="p-2 text-right text-xl">折后总计</td>
+                       <td colspan="6" class="p-2 text-right text-xl">折后金额</td>
                        <td class="p-2 text-right text-xl text-red-600">¥${finalTotal.toFixed(2)}</td>
                     </tr>
                 `;
@@ -2932,10 +3104,10 @@
                 document.getElementById('customer-billing').value = customer.billing || '';
                 document.getElementById('customer-taxid').value = customer.taxId || '';
                 document.getElementById('customer-notes').value = customer.notes || '';
-                document.getElementById('customer-discount').value = '0';
+                resetPromoField();
             } else {
                 customerForm.reset();
-                document.getElementById('customer-discount').value = '0';
+                resetPromoField();
             }
         }
 
