@@ -10,6 +10,8 @@
     <meta name="format-detection" content="telephone=no">
     <title>览微生物科技（上海）有限公司 · 在线下单</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js (html2canvas + jsPDF) for contract PDF email attachment -->
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
     <link rel="icon" href="assets/logo-mark.png" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -1192,7 +1194,7 @@
 
     <script>
         // 邮件网关：email-api（Aliyun SMTP / nodemailer）公网 HTTPS。空字符串=仅本地生成文件，绝不打开 mailto。
-        // POST JSON → sales@vivebio.cn only: { to, subject, body, order, contract_html, packing_html, contract_pdf?, packing_pdf? }
+        // POST JSON → sales@vivebio.cn only: contract as PDF (contract_pdf base64) when available; packing HTML (CSV later)
         // 业务：订购确认+配货单仅发销售部；不下发客户邮箱。
         window.LANWEI_ORDER_EMAIL_ENDPOINT = 'https://dangerous-offers-ward-someone.trycloudflare.com';
 
@@ -2236,23 +2238,86 @@
             return btoa(binary);
         }
 
+        function bytesToBase64(bytes) {
+            const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || []);
+            let binary = '';
+            const chunk = 0x8000;
+            for (let i = 0; i < u8.length; i += chunk) {
+                binary += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+            }
+            return btoa(binary);
+        }
+
         function wrapDocHtml(title, bodyHtml) {
             return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>${title}</title>
 <style>body{font-family:'Microsoft YaHei',sans-serif;font-size:12pt;color:#111;margin:24px;} table{border-collapse:collapse;width:100%;} td,th{border:1px solid #ccc;padding:6px;} img.seal-overlay{max-width:140px;}</style>
 </head><body>${bodyHtml || ''}</body></html>`;
         }
 
-        async function submitOrderEmails({ salesTo, order, contractHtml, packingHtml }) {
+        /**
+         * Render #contract-printable-area (with seal) to portrait A4 PDF base64.
+         * Uses off-screen clone so print/download UI is not blocked or flickered.
+         */
+        async function generateContractPdfBase64(sourceEl) {
+            if (!sourceEl) throw new Error('no contract element');
+            if (typeof html2pdf === 'undefined') throw new Error('html2pdf.js not loaded');
+
+            const host = document.createElement('div');
+            host.setAttribute('aria-hidden', 'true');
+            host.style.cssText = 'position:fixed;left:-12000px;top:0;width:190mm;background:#fff;color:#111;padding:0;box-sizing:border-box;z-index:-1;pointer-events:none;';
+            const clone = sourceEl.cloneNode(true);
+            clone.id = 'contract-pdf-clone';
+            clone.style.cssText = 'background:#fff;color:#111;width:100%;box-sizing:border-box;padding:4mm;';
+            const srcInputs = sourceEl.querySelectorAll('.contract-remark-input');
+            const dstInputs = clone.querySelectorAll('.contract-remark-input');
+            srcInputs.forEach((inp, i) => {
+                if (dstInputs[i]) {
+                    dstInputs[i].setAttribute('value', inp.value);
+                    dstInputs[i].value = inp.value;
+                }
+            });
+            host.appendChild(clone);
+            document.body.appendChild(host);
+
+            try {
+                const opt = {
+                    margin: [10, 10, 10, 10],
+                    image: { type: 'jpeg', quality: 0.92 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['css', 'legacy'] }
+                };
+                const dataUri = await html2pdf().set(opt).from(clone).outputPdf('datauristring');
+                const b64 = (dataUri || '').split(',').pop() || '';
+                if (!b64 || !b64.startsWith('JVBERi')) {
+                    throw new Error('PDF output invalid');
+                }
+                return b64;
+            } finally {
+                host.remove();
+            }
+        }
+
+        async function submitOrderEmails({ salesTo, order, contractHtml, packingHtml, contractPdfBase64 }) {
             const d = formatOrderDateParts();
             const to = salesTo || 'sales@vivebio.cn';
             const subject = `【览微在线下单】${order.name} · ${d.dateIso}`;
             const body = buildOrderSummaryText(order);
             const endpoint = (window.LANWEI_ORDER_EMAIL_ENDPOINT || '').trim();
 
-            const contractDoc = wrapDocHtml(`订购确认_${order.name}_${d.dateIso}`, contractHtml);
+            const contractDoc = wrapDocHtml(`订购合同_${order.name}_${d.dateIso}`, contractHtml);
             const packingDoc = wrapDocHtml(`配货单_${order.name}_${d.dateIso}`, packingHtml);
-            const contractB64 = utf8ToBase64(contractDoc);
             const packingB64 = utf8ToBase64(packingDoc);
+
+            const usePdf = !!(contractPdfBase64 && String(contractPdfBase64).startsWith('JVBERi'));
+            const contractFilename = usePdf
+                ? `订购合同_${order.name}_${d.dateShort}.pdf`
+                : `订购合同_${order.name}_${d.dateShort}.html`;
 
             const payload = {
                 to: to,
@@ -2273,13 +2338,20 @@
                 },
                 contract_html: contractDoc,
                 packing_html: packingDoc,
-                // HTML 文档作附件（base64）；浏览器端暂无可靠 PDF 库时用 HTML
-                contract_pdf: contractB64,
+                // Packing stays HTML for now (CSV content format is a follow-up task)
                 packing_pdf: packingB64,
-                contract_filename: `订购确认_${order.name}_${d.dateShort}.html`,
                 packing_filename: `配货单_${order.name}_${d.dateShort}.html`,
-                attachment_content_type: 'text/html; charset=utf-8'
+                contract_filename: contractFilename
             };
+
+            if (usePdf) {
+                payload.contract_pdf = contractPdfBase64;
+                payload.contract_content_type = 'application/pdf';
+            } else {
+                // Fallback: HTML mislabeled historically as contract_pdf — server still accepts
+                payload.contract_pdf = utf8ToBase64(contractDoc);
+                payload.contract_content_type = 'text/html; charset=utf-8';
+            }
 
             if (endpoint) {
                 try {
@@ -2295,7 +2367,8 @@
                     return {
                         ok: true,
                         localOnly: false,
-                        message: '请下载/打印合同留存。<br><span style="opacity:0.9">订购确认与配货单已发至订单邮箱。</span>'
+                        usedPdf: usePdf,
+                        message: '请下载/打印合同留存。<br><span style="opacity:0.9">订购合同与配货单已发至订单邮箱。</span>'
                     };
                 } catch (err) {
                     console.error('email endpoint failed', err);
@@ -2784,6 +2857,7 @@
 
             const originalTitle = document.title;
             document.title = currentContractFilename;
+            // Print/download must not wait on PDF generation or email
             window.print();
             // Use a timeout to restore the title after the print dialog has opened.
             setTimeout(() => {
@@ -2795,14 +2869,23 @@
                 orderEmailSentToSales = true;
                 try {
                     if (!currentPackingHtml) generatePackingList(currentCustomerInfo);
+                    let contractPdfBase64 = null;
+                    try {
+                        contractPdfBase64 = await generateContractPdfBase64(contractPrintableArea);
+                    } catch (pdfErr) {
+                        console.error('contract PDF generation failed, falling back to HTML attachment', pdfErr);
+                    }
                     const emailResult = await submitOrderEmails({
                         salesTo: 'sales@vivebio.cn',
                         order: currentCustomerInfo,
                         contractHtml: contractPrintableArea.innerHTML,
-                        packingHtml: currentPackingHtml
+                        packingHtml: currentPackingHtml,
+                        contractPdfBase64
                     });
                     if (emailResult && emailResult.ok && !emailResult.localOnly) {
-                        showToast('合同与配货单已发至订单邮箱');
+                        showToast(emailResult.usedPdf
+                            ? '订购合同(PDF)与配货单已发至订单邮箱'
+                            : '合同与配货单已发至订单邮箱');
                     }
                 } catch (err) {
                     console.error('sales email on print failed', err);

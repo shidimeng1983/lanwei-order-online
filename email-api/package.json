@@ -2,11 +2,12 @@
   "name": "lanwei-order-email-api",
   "version": "1.0.0",
   "private": true,
-  "description": "HTTPS email gateway: Lanwei order page → Aliyun enterprise SMTP → sales@vivebio.cn",
+  "description": "HTTPS email gateway: Lanwei order page \u2192 Aliyun enterprise SMTP \u2192 sales@vivebio.cn",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test-send": "node scripts/test-send.js"
+    "test-send": "node scripts/test-send.js",
+    "smoke-attachments": "node scripts/smoke-attachments.js"
   },
   "engines": {
     "node": ">=18"

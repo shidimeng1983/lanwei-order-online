@@ -2,7 +2,16 @@
 
 Node + Express + **nodemailer** gateway. Cloudflare Workers cannot open SMTP sockets, so this service runs on any Node host (box + cloudflared tunnel, Railway, Fly, Render, VPS, etc.).
 
-Accepts the same POST JSON as the old Resend worker and emails **订购确认 + 配货单** (HTML attachments) **only** to `sales@vivebio.cn`.
+Accepts the same POST JSON as the old Resend worker and emails **订购合同 + 配货单** **only** to `sales@vivebio.cn`.
+
+### Attachments
+
+| Field | Notes |
+|-------|--------|
+| `contract_pdf` + `contract_filename` ending `.pdf` + `contract_content_type: application/pdf` | Real PDF bytes (base64). Preferred. |
+| `contract_html` / legacy HTML in `contract_pdf` | Still accepted as `text/html` fallback. |
+| `packing_csv` + `packing_filename` ending `.csv` | Optional UTF-8 or base64 CSV (`text/csv`). |
+| `packing_html` / legacy `packing_pdf` HTML | HTML packing attachment when CSV not sent. |
 
 ## Secrets (never commit)
 
